@@ -1,0 +1,31 @@
+header = woof
+footer = yay
+prefix_1 = rrr-
+prefix_2 = rr-
+prefix_3 = Rr-
+prefix_4 = Rrr-
+
+[sounds]
+woo[5]f
+ru[3]f
+ar[3]f
+wu[3]f
+rawr[3]f
+aw[3]rf
+rof
+grr[3]f
+baf
+wruf
+whuf
+huf
+grr[5]
+row[3]f
+raw[3]f
+wrof
+har[3]f
+awoo[6]
+bar[3]k
+whi[3]ne
+pant
+grow[3]l
+yi[3]p
