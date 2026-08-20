@@ -60,34 +60,18 @@ body {
 }
 
 @media (max-width: 800px) {
-  .bg-1 {
-    bottom: 2.5%;
-    top: auto;
-  }
-
+  .bg-1,
   .bg-2 {
-    bottom: 1.5%;
-    ;
-    top: auto;
-  }
-}
-
-@media (max-height: 800px) {
-  .bg {
-    display: none;
-  }
-}
-
-@media (max-width: 400px) {
-  .bg {
     display: none;
   }
 }
 
 main {
-  max-width: 40rem;
+  max-width: 70%;
   margin: 0 auto;
   padding: 2rem 1rem 4rem;
+  height: 100vh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -95,26 +79,42 @@ main {
   z-index: 2;
 }
 
+@media (max-width: 1100px) {
+  main {
+    max-width: 90%;
+  }
+}
+
 h1 {
   text-align: center;
   margin: 0;
   max-width: 34rem;
   line-height: 1.1;
-  font-size: 3vh;
+  font-size: max(min(3vh, 2rem), 1.5rem);
 }
 
 h2 {
   font-family: "Gorditas", serif;
+  font-size: max(min(2.75vh, 1.75rem), 1.5rem);
+}
+
+p {
+  font-family: "Gorditas", serif;
+  font-size: max(min(2.25vh, 1.25rem), 1.0rem);
 }
 
 .box {
   position: relative;
   width: 100%;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
 }
 
 textarea {
   width: 100%;
   box-sizing: border-box;
+  flex: 1;
   min-height: 125px;
   font: 1rem monospace;
   padding: .75rem .75rem 2rem;
@@ -175,7 +175,10 @@ footer {
   font-family: "Gorditas", serif;
   font-weight: 100;
   text-shadow: 0 2px 4px rgba(0, 0, 0, .5);
-  position: relative;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 2;
   text-align: center;
   color: #bdd7b6;
