@@ -26,6 +26,10 @@ jobs:
           /opt/emsdk/emsdk install latest
           /opt/emsdk/emsdk activate latest
 
+      - name: Install web dependencies
+        run: npm install
+        working-directory: web
+
       - name: Build
         run: |
           source /opt/emsdk/emsdk_env.sh

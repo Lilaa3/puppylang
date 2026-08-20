@@ -4,7 +4,7 @@ body {
   background-size: auto 100%, 100% 100%;
   background-position: center, center;
   background-attachment: fixed;
-  font-family: "Luckiest Guy", cursive;
+  font-family: "Gorditas", cursive;
   color: rgb(206, 234, 192);
   text-shadow: 1px 3px 1px rgba(22, 32, 32, 1);
 }
@@ -86,6 +86,7 @@ main {
 }
 
 h1 {
+  font-family: "Luckiest Guy", cursive;
   text-align: center;
   margin: 0;
   max-width: 34rem;
@@ -94,12 +95,22 @@ h1 {
 }
 
 h2 {
-  font-family: "Gorditas", serif;
   font-size: max(min(2.75vh, 1.75rem), 1.5rem);
 }
 
+h3 {
+  font-size: max(min(2.25vh, 1.4rem), 1.1rem);
+}
+
+a {
+  color: #b3f2a8;
+}
+
+a:hover {
+  color: #e2fcd8;
+}
+
 p {
-  font-family: "Gorditas", serif;
   font-size: max(min(2.25vh, 1.25rem), 1.0rem);
 }
 
@@ -183,4 +194,95 @@ footer {
   text-align: center;
   color: #bdd7b6;
   font-size: .85rem;
+}
+
+.help {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #162020;
+  background: #eaf7d8;
+  border: 2px solid rgba(22, 32, 32, 1);
+  border-radius: 50%;
+  text-decoration: none;
+  box-shadow: 1px 2px 0 rgba(22, 32, 32, 1);
+  transition: transform .1s, background .1s;
+}
+
+.help img {
+  width: 24px;
+  height: 24px;
+}
+
+.help:hover {
+  background: #d8efc2;
+  transform: rotate(-6deg) scale(1.05);
+}
+
+.help:active {
+  transform: translate(1px, 1px);
+}
+
+.mechanisms {
+  max-width: 42rem;
+  margin: 2rem auto;
+  padding: 2rem 1.75rem 3rem;
+  height: auto;
+  min-height: 0;
+  align-items: stretch;
+  text-align: left;
+  background: rgba(10, 18, 15, .65);
+  backdrop-filter: blur(5px);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
+}
+
+.mechanisms,
+.mechanisms * {
+  text-shadow: none;
+}
+
+.mechanisms h1 {
+  max-width: none;
+}
+
+.mechanisms img {
+  max-width: 100%;
+  border-radius: 10px;
+  border: 3px solid rgba(22, 32, 32, 1);
+  box-shadow: 2px 3px 0 rgba(22, 32, 32, 1);
+}
+
+.mechanisms code {
+  font-family: monospace;
+  color: #fff;
+  background: rgba(22, 32, 32, .55);
+  border-radius: 5px;
+  padding: .1em .35em;
+}
+
+.mechanisms sup {
+  font-size: .75em;
+}
+
+.mechanisms .back {
+  margin-top: 2rem;
+  color: #000;
+  background: #eaf7d8;
+  border: 3px solid rgba(22, 32, 32, 1);
+  border-radius: 10px;
+  padding: .4rem .9rem;
+  text-decoration: none;
+  box-shadow: 2px 3px 0 rgba(22, 32, 32, 1);
+  max-width: fit-content;
+}
+
+.mechanisms .back:hover {
+  background: #d8efc2;
 }
