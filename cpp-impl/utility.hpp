@@ -117,10 +117,9 @@ auto match_pattern_variation(const std::vector<Run> &in_runs,
 // Base sound, variation index, casing into a unique linear integer before
 // modulo.
 auto calc_sound_value(const WordInfo &base, int var_index, Casing casing) {
-    uint32_t base_val =
-        (var_index == 0)
-            ? (base.base_index * CASING_MULTIPLIER)
-            : (base.var_offset + (var_index - 1) * CASING_MULTIPLIER);
+    uint32_t base_val = base.base_index * CASING_MULTIPLIER;
+    if (var_index > 0)
+        base_val = base.var_offset + (var_index - 1) * CASING_MULTIPLIER;
     return base_val + std::to_underlying(casing);
 }
 
@@ -164,7 +163,7 @@ auto parse_pattern(std::string_view pattern) -> std::vector<Run> {
     };
 
     for (size_t i = 0; i < pattern.size();) {
-        if (pattern[i] == '[') {
+        if (pattern[i] == '[') { // max run count open
             if (auto close = pattern.find("]", i);
                 close != std::string_view::npos && !runs.empty()) {
                 auto digits = pattern.substr(i + 1, close - i - 1);
@@ -175,7 +174,7 @@ auto parse_pattern(std::string_view pattern) -> std::vector<Run> {
                 continue;
             }
         }
-        if (std::isalpha(static_cast<unsigned char>(pattern[i]))) {
+        if (std::isalpha(static_cast<unsigned char>(pattern[i]))) { // letter
             update_run(pattern[i]);
         }
         ++i;
