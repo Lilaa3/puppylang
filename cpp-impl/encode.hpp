@@ -38,7 +38,7 @@ inline auto apply_casing(std::string word, Casing casing) -> std::string {
 
 /// Generates all possible sounds and groups them by their 0–127 value,
 /// sorted shortest-first so we can easily pick default/short OR elongated very
-/// excited woooofs
+/// excited howls
 inline auto build_sound_table(const std::vector<WordInfo> &sounds)
     -> std::expected<std::array<std::vector<std::string>, VALUE_MODULUS>,
                      PuplangError> {
@@ -104,7 +104,7 @@ inline auto next_utf8(std::string_view s, size_t &i)
     -> std::pair<uint32_t, int> {
     int len = std::countl_one(uint8_t(s[i]));
 
-    // ASCII (starts with '0') or invalid bytes fallback to 1 byte
+    // ASCII (starts with "0") or invalid bytes fallback to 1 byte
     if (len <= 1 || len > 4 || i + len > s.size()) {
         return { uint8_t(s[i++]), 1 };
     }
@@ -191,9 +191,9 @@ inline auto encode(std::string_view text, const Settings &cfg,
             current_mode = chunk.mode;
         }
 
-        result += ' ' + chunk.lead_punct + sound + chunk.trail_punct;
+        result += " " + chunk.lead_punct + sound + chunk.trail_punct;
     }
 
-    result += ' ' + cfg.footer;
+    result += " " + cfg.footer;
     return result;
 }

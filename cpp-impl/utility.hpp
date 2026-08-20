@@ -164,8 +164,8 @@ auto parse_pattern(std::string_view pattern) -> std::vector<Run> {
     };
 
     for (size_t i = 0; i < pattern.size();) {
-        if (pattern[i] == '[') {
-            if (auto close = pattern.find(']', i);
+        if (pattern[i] == "[") {
+            if (auto close = pattern.find("]", i);
                 close != std::string_view::npos && !runs.empty()) {
                 auto digits = pattern.substr(i + 1, close - i - 1);
                 std::from_chars(digits.data(),
@@ -205,7 +205,7 @@ struct Settings {
 
         while (std::getline(file, line_buf)) {
             auto line = trim(line_buf);
-            if (line.empty() || line.starts_with('#'))
+            if (line.empty() || line.starts_with("#"))
                 continue;
 
             if (line == "[sounds]") {
@@ -215,7 +215,7 @@ struct Settings {
 
             if (in_sounds) {
                 patterns.emplace_back(line);
-            } else if (auto eq = line.find('='); eq != std::string_view::npos) {
+            } else if (auto eq = line.find("="); eq != std::string_view::npos) {
                 auto k = trim(line.substr(0, eq)),
                      v = trim(line.substr(eq + 1));
                 if (k == "header")
