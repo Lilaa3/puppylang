@@ -164,7 +164,7 @@ auto parse_pattern(std::string_view pattern) -> std::vector<Run> {
     };
 
     for (size_t i = 0; i < pattern.size();) {
-        if (pattern[i] == "[") {
+        if (pattern[i] == '[') {
             if (auto close = pattern.find("]", i);
                 close != std::string_view::npos && !runs.empty()) {
                 auto digits = pattern.substr(i + 1, close - i - 1);

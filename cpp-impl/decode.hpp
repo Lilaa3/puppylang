@@ -81,7 +81,7 @@ inline void append_utf8(std::string &out, uint32_t cp) {
 inline auto decode(std::string_view encoded_text, const Settings &cfg)
     -> std::expected<std::string, PuplangError> {
     auto tokens =
-        encoded_text | std::views::split(" ") |
+        encoded_text | std::views::split(' ') |
         std::views::transform([](auto r) { return std::string_view(r); }) |
         std::views::filter([](auto sv) { return !sv.empty(); }) |
         std::ranges::to<std::vector>();
@@ -105,6 +105,12 @@ inline auto decode(std::string_view encoded_text, const Settings &cfg)
 
         if (mode_change != 0)
             current_mode = mode_change;
+
+        // Bare punctuation token, nothing to decode
+        if (sound.empty()) {
+            result.append(trail);
+            continue;
+        }
 
         auto sound_val = get_sound_value(sound, cfg.sounds);
         if (!sound_val)

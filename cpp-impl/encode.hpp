@@ -178,6 +178,11 @@ inline auto encode(std::string_view text, const Settings &cfg,
                           : stretchable[rng() % stretchable.size()];
 
     std::string result = cfg.header;
+    
+    // No sound chunks, just emit punctuation
+    if (chunks.empty())
+        result += " " + std::string(text);
+
     int current_mode = 1;
 
     for (size_t i = 0; i < chunks.size(); ++i) {
