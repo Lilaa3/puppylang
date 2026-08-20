@@ -41,3 +41,7 @@ Uhm... Encrypt your messages like a terminally online trans woman. Or double enc
 ## It can do your homework
 
 Thats right the opposite of a dumb dog is one that speaks AND does your homework.
+
+## Development status
+
+PLEASE DON'T LOOK AT MY STYLES.CSS BRO PLEASE
