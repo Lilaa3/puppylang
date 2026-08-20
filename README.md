@@ -7,6 +7,26 @@ You might also be asking, how does it work! Well imagine like a discord puppygir
 
 <sup>why would you ask me [to do that](MECHANISMS.md).,.</sup>
 
+## Building
+
+### C++
+
+Dependencies: [CMake](https://cmake.org/) >= 3.10 and a C++26 compiler (clang 17+ or gcc 14+).
+
+```sh
+cmake -S cpp-impl -B build
+cmake --build build
+```
+
+### Web
+
+Dependencies: [Emscripten](https://emscripten.org/) (latest), [Node.js](https://nodejs.org/) (latest), and npm (for `marked`, installed automatically via `npm install`).
+
+```sh
+npm install --prefix web
+bash web/build.sh
+```
+
 ## Contributing
 
 #### why.
