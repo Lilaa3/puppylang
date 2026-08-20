@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>puplang</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Gorditas:wght@400;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="veil"></div>
+  <div class="bg bg-1"><img src="freak.webp" alt=""></div>
+  <div class="bg bg-2"><img src="freak.webp" alt=""></div>
+
+  <main>
+    <h1>ever wondered what this
+      <span style="font-size:2em;display:inline-block;transform:rotate(-4deg)">fucking</span>
+      freak is talking about when she is like<br/>
+      <span style="font-size:2.4em;display:inline-block;transform:rotate(-6deg)">WOOF WOOF</span>
+      <br/>
+      yeah ok she <span style="font-size:1.8em;display:inline-block;transform:rotate(3deg)">MIGHT</span>
+      be calling you gay..
+    </h1>
+    <p>The CIA WISHES they were at my level, arf!</p>
+    <h2>In comes human words</h2>
+    <textarea id="text" placeholder="type here"></textarea>
+    <h2>Out goes <i>*woof*</i></h2>
+    <textarea id="woof" placeholder="woof here" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+  </main>
+
+  <footer>🐾 © 2026 Lilaa3</footer>
+
+  <script src="settings.js"></script>
+  <script src="puplang.js"></script>
+  <script>
+    (async () => {
+      const module = await createPuplangModule();
+      const settings = PUPLANG_SETTINGS;
+
+      const text = document.getElementById('text');
+      const woof = document.getElementById('woof');
+
+      text.addEventListener('input', () => {
+        woof.value = module.ccall('puplang_encode', 'string', ['string', 'string'], [text.value, settings]);
+      });
+
+      woof.addEventListener('input', () => {
+        const out = module.ccall('puplang_decode', 'string', ['string', 'string'], [woof.value, settings]);
+        if (module.ccall('puplang_last_error', 'string', [], []) === '') {
+          text.value = out;
+        }
+      });
+    })();
+  </script>
+</body>
+
+</html>

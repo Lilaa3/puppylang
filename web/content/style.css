@@ -1,0 +1,125 @@
+body {
+  margin: 0;
+  background-image: url('interior--dog00--00.webp');
+  background-size: auto 100%, 100% 100%;
+  background-position: center, center;
+  background-attachment: fixed;
+  font-family: "Luckiest Guy", cursive;
+  color: rgb(206, 234, 192);
+  text-shadow: 1px 3px 1px rgba(22, 32, 32, 1);
+}
+
+.veil {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  background: rgba(0, 0, 0, .25);
+  backdrop-filter: blur(4px) brightness(.85);
+  pointer-events: none;
+}
+
+.bg {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bg img {
+  width: 20vw;
+  height: auto;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .35));
+  animation: wave 4s ease-in-out infinite;
+}
+
+@keyframes wave {
+
+  0%,
+  100% {
+    transform: rotate(var(--rot)) translateY(0);
+  }
+
+  50% {
+    transform: rotate(var(--rot)) translateY(-7px);
+  }
+}
+
+.bg-1 {
+  top: 5%;
+  left: 3%;
+  --rot: -12deg;
+}
+
+.bg-2 {
+  top: 10%;
+  right: 4%;
+  --rot: 10deg;
+  animation-delay: -1s;
+}
+
+@media (max-width: 800px) {
+  .bg-1 {
+    bottom: 2.5%;
+    top: auto;
+  }
+  .bg-2 {
+    bottom: 1.5%;;
+    top: auto;
+  }
+}
+
+@media (max-height: 800px) {
+  .bg {
+    display: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .bg {
+    display: none;
+  }
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+h1 {
+  text-align: center;
+  margin: 0;
+  max-width: 34rem;
+  line-height: 1.1;
+  font-size: 3vh;
+}
+
+h2 {
+  font-family: "Gorditas", serif;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 125px;
+  font: 1rem monospace;
+}
+
+footer {
+  font-family: "Luckiest Guy", cursive;
+  font-weight: 100;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .5);
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 0 0 1.5rem;
+  color: #333;
+  font-size: .85rem;
+}
