@@ -1,4 +1,4 @@
-# puplang
+# puplang (joke between a friend that i had to make)
 
 ![Bible but about puppygirls and catgirls in puplang](images/example.webp)
 So you might think, Lila, why would I need to write out my messages like a dog with random howls inbetween the barks. Well.. Uhm.. Mm...

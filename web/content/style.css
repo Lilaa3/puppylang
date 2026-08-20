@@ -220,9 +220,43 @@ footer {
   height: 24px;
 }
 
+.repo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .85rem;
+  width: fit-content;
+  padding: 1.05rem min(6rem, 90%) .65rem;
+  font-family: "Luckiest Guy", cursive;
+  font-size: 1.6rem;
+  color: #aad8c5;
+  background: #263962;
+  border-radius: 14px;
+  text-decoration: none;
+  margin: 0 auto 2rem;
+  transition: background .1s;
+  box-shadow: 4px 6px 0px rgb(7, 83, 83);
+}
+
+.repo span {
+  line-height: 1;
+}
+
+.repo:hover {
+  background: #d8efc2;
+}
+
+.repo img {
+  width: 34px;
+  height: 34px;
+  display: block;
+  position: relative;
+  top: -5px;
+  filter: invert(1);
+}
+
 .help:hover {
   background: #d8efc2;
-  transform: rotate(-6deg) scale(1.05);
 }
 
 .help:active {
@@ -250,9 +284,10 @@ footer {
 
 .mechanisms h1 {
   max-width: none;
+  font-size: 2.25rem;
 }
 
-.mechanisms img {
+.mechanisms article img {
   max-width: 100%;
   border-radius: 10px;
   border: 3px solid rgba(22, 32, 32, 1);

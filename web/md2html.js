@@ -26,11 +26,15 @@ const html = `<!doctype html>
 <body>
   <div class="veil"></div>
 
-  <main class="mechanisms">
+<main class="mechanisms">
+    <a class="repo" href="https://github.com/Lilaa3/puppylang" title="puplang on GitHub">
+      <span>View on github</span>
+      <img src="Octicons-mark-github.svg" alt="">
+    </a>
     <article>
 ${body}
     </article>
-    <a class="back" href="index.html"><- back to the main page</a>
+    <a class="back" href="index.html"><-- back to the woofs</a>
   </main>
 
   <footer>🐾 © 2026 Lilaa3</footer>
