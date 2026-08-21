@@ -44,4 +44,8 @@ Thats right the opposite of a dumb dog is one that speaks AND does your homework
 
 ## Development status
 
-PLEASE DON'T LOOK AT MY STYLES.CSS BRO PLEASE
+I'd really like to add stuff like.
+Binary mode: sounds funny
+More optimized bark mode, similar to purrcrypt?
+Compression?? Not out of the question?
+Versioning + a magic number.. Maybe.
