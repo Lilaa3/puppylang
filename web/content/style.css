@@ -26,6 +26,7 @@ body {
 }
 
 @keyframes wave {
+
   0%,
   100% {
     transform: rotate(var(--rot)) translateY(0);
@@ -50,6 +51,7 @@ body {
 }
 
 @media (max-width: 900px) {
+
   .bg-1,
   .bg-2 {
     display: none;
@@ -213,12 +215,13 @@ footer {
 }
 
 .repo {
+  width: fit-content;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   width: fit-content;
   gap: .5rem;
-  padding: 1.05rem 7rem .65rem;
+  padding: 1rem 2rem 0.25rem;
   font-family: "Luckiest Guy", cursive;
   font-size: 1.6rem;
   color: #aad8c5;
@@ -227,8 +230,8 @@ footer {
   text-decoration: none;
   margin: 0 auto 2rem;
   transition: background .1s;
-  box-shadow: 4px 6px 0px rgb(7, 83, 83);
-  line-height: 1;
+  box-shadow: 4px 6px 0px rgb(38, 44, 51);
+  outline: 3px solid rgb(7, 83, 83);
 }
 
 .repo:hover {
