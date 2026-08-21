@@ -3,3 +3,4 @@
 /.vscode
 /web/dist
 /web/node_modules
+*.webp~
