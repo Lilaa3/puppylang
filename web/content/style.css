@@ -150,8 +150,9 @@ textarea.error {
 
 .copy {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 0px;
+  right: -35px;
+  z-index: 2;
   width: 30px;
   height: 30px;
   display: flex;
@@ -196,7 +197,7 @@ footer {
   font-size: .85rem;
 }
 
-.help {
+.info {
   position: fixed;
   right: 1.25rem;
   bottom: 1.25rem;
@@ -209,13 +210,13 @@ footer {
   color: #162020;
   background: #eaf7d8;
   border: 2px solid rgba(22, 32, 32, 1);
-  border-radius: 50%;
+  border-radius: 8px;
   text-decoration: none;
   box-shadow: 1px 2px 0 rgba(22, 32, 32, 1);
   transition: transform .1s, background .1s;
 }
 
-.help img {
+.info img {
   width: 24px;
   height: 24px;
 }
@@ -224,21 +225,18 @@ footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .85rem;
   width: fit-content;
-  padding: 1.05rem min(6rem, 90%) .65rem;
+  gap: .5rem;
+  padding: 1.05rem 7rem .65rem;
   font-family: "Luckiest Guy", cursive;
   font-size: 1.6rem;
   color: #aad8c5;
   background: #263962;
-  border-radius: 14px;
+  border-radius: 8px;
   text-decoration: none;
   margin: 0 auto 2rem;
   transition: background .1s;
   box-shadow: 4px 6px 0px rgb(7, 83, 83);
-}
-
-.repo span {
   line-height: 1;
 }
 
@@ -273,7 +271,7 @@ footer {
   text-align: left;
   background: rgba(10, 18, 15, .65);
   backdrop-filter: blur(5px);
-  border-radius: 16px;
+  border-radius: 8px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
 }
 
@@ -289,7 +287,7 @@ footer {
 
 .mechanisms article img {
   max-width: 100%;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 3px solid rgba(22, 32, 32, 1);
   box-shadow: 2px 3px 0 rgba(22, 32, 32, 1);
 }
@@ -311,7 +309,7 @@ footer {
   color: #000;
   background: #eaf7d8;
   border: 3px solid rgba(22, 32, 32, 1);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: .4rem .9rem;
   text-decoration: none;
   box-shadow: 2px 3px 0 rgba(22, 32, 32, 1);
