@@ -21,19 +21,24 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install emscripten
-        run: |
-          git clone --depth 1 https://github.com/emscripten-core/emsdk.git /opt/emsdk
-          /opt/emsdk/emsdk install latest
-          /opt/emsdk/emsdk activate latest
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: 6.0.6
+          actions-cache-folder: emsdk-cache
+
+      - name: Setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Install web dependencies
-        run: npm install
+        run: npm ci
         working-directory: web
 
       - name: Build
-        run: |
-          source /opt/emsdk/emsdk_env.sh
-          bash web/build.sh
+        run: bash web/build.sh
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
