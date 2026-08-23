@@ -2,19 +2,23 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <expected>
+#include <fstream>
 #include <random>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "utf8.h"
 #include "utility.hpp"
+#include <assert.h>
 
 /// Reconstructs the sound/word by increasing letter repeats from left to right,
 /// carrying over to the next letter once a letter reaches its max limit.
-inline auto build_word_variation(const WordInfo &base, uint32_t var_index)
+auto build_word_variation(const WordInfo &base, uint32_t var_index)
     -> std::string {
     std::string word;
     int rem = var_index;
@@ -26,7 +30,7 @@ inline auto build_word_variation(const WordInfo &base, uint32_t var_index)
     return word;
 }
 
-inline auto apply_casing(std::string word, Casing casing) -> std::string {
+auto apply_casing(std::string word, Casing casing) -> std::string {
     if (casing == Casing::Title && !word.empty()) {
         word.front() = static_cast<char>(
             std::toupper(static_cast<unsigned char>(word.front())));
@@ -39,7 +43,7 @@ inline auto apply_casing(std::string word, Casing casing) -> std::string {
 /// Generates all possible sounds and groups them by their 0–127 value,
 /// sorted shortest-first so we can easily pick default/short OR elongated very
 /// excited howls
-inline auto build_sound_table(const std::vector<WordInfo> &sounds)
+auto build_sound_table(const std::vector<WordInfo> &sounds)
     -> std::expected<std::array<std::vector<std::string>, VALUE_MODULUS>,
                      PuplangError> {
     std::array<std::vector<std::string>, VALUE_MODULUS> table;
@@ -69,136 +73,210 @@ inline auto build_sound_table(const std::vector<WordInfo> &sounds)
     return table;
 }
 
-// Chooses from the shortest forms by default, or the elongated forms if
-// howling.
-inline auto pick_candidate_word(std::span<const std::string> candidates,
-                                bool howl, auto &rng) -> std::string {
+struct HowlTuning {
+    int short_limit = 2;   // extra letters that still count as a "tiny" change
+    double min_howl = 0.1; // floor so long forms stay reachable
+    double shape = 0.9;    // gentle per-letter decay
+};
+
+/// Picks a candidate word.
+///
+/// Variations that differ by only a few letters (up to howl.short_limit extra
+/// characters) are all "normal" and commonly used with nearly equal odds.
+/// Beyond that, longer forms are progressively rarer, and the overall chance of
+/// such a long howl equals howl_chance.
+auto pick_candidate_word(std::span<const std::string> candidates,
+                         double howl_chance, const HowlTuning &howl, auto &rng)
+    -> std::string {
     if (candidates.empty())
         return "";
 
-    // If howling or randomly triggering a flavor variation
-    if ((howl || (rng() % 5 == 0)) && candidates.size() > 1) {
-        return candidates[rng() % candidates.size()];
+    const double howl_prob = std::max(howl_chance, howl.min_howl);
+    const size_t min_len = candidates.front().size();
+
+    // weight = SHAPE^(extra letters)
+    std::vector<double> weight(candidates.size());
+    double short_w = 0.0, howl_w = 0.0;
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        int extra =
+            static_cast<int>(candidates[i].size()) - static_cast<int>(min_len);
+        weight[i] = std::pow(howl.shape, extra);
+        if (extra <= howl.short_limit)
+            short_w += weight[i];
+        else
+            howl_w += weight[i];
     }
 
-    // Default to base/short variations
-    size_t min_len = candidates.front().size();
-    auto mid =
-        std::ranges::find_if(candidates, [min_len](const std::string &w) {
-            return w.size() > min_len;
-        });
+    // Rescale long forms so the overall howl chance equals howl_prob, keeping
+    // their relative ranking.
+    if (howl_w > 0.0) {
+        const double scale = (short_w * howl_prob / (1.0 - howl_prob)) / howl_w;
+        for (size_t i = 0; i < candidates.size(); ++i) {
+            int extra = static_cast<int>(candidates[i].size()) -
+                        static_cast<int>(min_len);
+            if (extra > howl.short_limit)
+                weight[i] *= scale;
+        }
+    }
 
-    std::span short_words(candidates.begin(), mid);
-    return short_words[rng() % short_words.size()];
+    return candidates[std::discrete_distribution<size_t>(weight.begin(),
+                                                         weight.end())(rng)];
 }
 
 struct SoundChunk {
-    int value;          // 7-bit value
-    int mode;           // UTF-8 byte width (1 to 4)
+    uint8_t value;      // 7-bit value
+    CodePointMode mode; // UTF-8 byte width (1 to 4)
     bool is_first_byte; // True if this chunk starts a new codepoint
     std::string lead_punct;
     std::string trail_punct;
 };
 
-inline auto next_utf8(std::string_view s, size_t &i)
-    -> std::pair<uint32_t, int> {
-    int len = std::countl_one(uint8_t(s[i]));
+/// State maintained across streaming encode calls.
+struct EncodeState {
+    CodePointMode current_mode = CodePointMode::ASCII;
+    float howl_chance;
+    const float howl_decay;
+    HowlTuning howl;
+    std::mt19937_64 rng;
+    bool any_chunk_emitted = false;
 
-    // ASCII (starts with "0") or invalid bytes fallback to 1 byte
-    if (len <= 1 || len > 4 || i + len > s.size()) {
-        return { uint8_t(s[i++]), 1 };
+    EncodeState(uint64_t seed, double hc, double hd, HowlTuning h)
+        : howl_chance(hc), howl_decay(hd), howl(std::move(h)), rng(seed) {}
+};
+
+void encode_chunk(
+    const SoundChunk &chunk,
+    const std::array<std::vector<std::string>, VALUE_MODULUS> &table,
+    const Settings &cfg, EncodeState &state, std::ostream &out) {
+    auto &candidates = table[chunk.value];
+
+    assert(!candidates.empty());
+
+    std::string sound = pick_candidate_word(
+        candidates, state.howl_chance, state.howl, state.rng);
+
+    // Only decay if considered a howl
+    size_t min_len = candidates.front().size();
+    int extra = static_cast<int>(sound.size()) - static_cast<int>(min_len);
+    bool is_howl = extra > state.howl.short_limit;
+    if (is_howl) {
+        state.howl_chance *= state.howl_decay;
     }
 
-    // Extract payload bits from lead byte
-    uint32_t cp = uint8_t(s[i]) & (0xFF >> (len + 1));
-
-    // Shift in the 6 bits from each continuation byte
-    for (int off = 1; off < len; ++off) {
-        cp = (cp << 6) | (uint8_t(s[i + off]) & 0x3F);
+    // Emit prefix switch only when the codepoint byte-width changes
+    if (chunk.is_first_byte && chunk.mode != state.current_mode) {
+        out << ' ' << cfg.prefixes[chunk.mode];
+        state.current_mode = chunk.mode;
     }
 
-    i += len;
-    return { cp, len };
+    out << ' ' << chunk.lead_punct << sound << chunk.trail_punct;
+    state.any_chunk_emitted = true;
 }
 
-// Slices input stream into 7-bit chunks while attaching interleaved punctuation
-// to sound boundaries
-inline auto tokenize_input_to_chunks(std::string_view text)
-    -> std::vector<SoundChunk> {
-    std::vector<SoundChunk> chunks;
-    std::string pending_lead;
+struct EncodeOptions {
+    uint64_t seed = 64;
+    double howl_chance = 0.2;
+    double howl_decay = 0.5;
+    HowlTuning howl;
+};
 
-    for (size_t i = 0; i < text.size();) {
-        if (is_punct(text[i])) {
-            if (chunks.empty())
-                pending_lead.push_back(text[i]);
+// Returns the UTF-8 byte width (1-4) for a valid codepoint.
+inline auto codepoint_byte_width(uint32_t cp) -> int {
+    if (cp <= 0x7F)
+        return 1;
+    if (cp <= 0x7FF)
+        return 2;
+    if (cp <= 0xFFFF)
+        return 3;
+    return 4;
+}
+
+auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
+                   EncodeOptions opts = {})
+    -> std::expected<void, PuplangError> {
+    auto tablex = build_sound_table(cfg.sounds);
+    if (!tablex) {
+        return std::unexpected(tablex.error());
+    }
+    auto &table = *tablex;
+
+    EncodeState state(opts.seed, opts.howl_chance, opts.howl_decay, opts.howl);
+
+    // Read entire input into string
+    std::string input((std::istreambuf_iterator<char>(in)),
+                      std::istreambuf_iterator<char>());
+
+    // Validate UTF-8
+    if (!utf8::is_valid(input.begin(), input.end())) {
+        return std::unexpected(PuplangError::invalid_utf8);
+    }
+
+    out << cfg.header;
+
+    std::string pending_lead;  // punctuation before the next sound
+    std::string pending_trail; // punctuation after the previous sound
+    bool sound_since_punct = false;
+
+    auto emit_codepoint = [&](uint32_t cp, int bytes) -> void {
+        // Trailing punctuation belongs after the previous sound, so it is
+        // flushed right before the following sound starts.
+        if (!pending_trail.empty()) {
+            out << pending_trail;
+            pending_trail.clear();
+        }
+        for (int b = 0; b < bytes; ++b) {
+            int shift = BITS_PER_SOUND * (bytes - 1 - b);
+            SoundChunk chunk{
+                .value = static_cast<uint8_t>((cp >> shift) & SOUND_MASK),
+                .mode = static_cast<CodePointMode>(bytes),
+                .is_first_byte = (b == 0),
+                .lead_punct = (b == 0) ? std::move(pending_lead) : "",
+                .trail_punct = ""
+            };
+            if (b == 0)
+                pending_lead.clear();
+            encode_chunk(chunk, table, cfg, state, out);
+        }
+        sound_since_punct = true;
+    };
+
+    // Iterate through codepoints using utf8cpp
+    auto it = input.begin();
+    const auto end = input.end();
+
+    while (it != end) {
+        uint32_t cp = utf8::next(it, end);
+
+        // Check if this codepoint is ASCII punctuation
+        if (cp <= 0x7F && is_punct(static_cast<char>(cp))) {
+            if (sound_since_punct)
+                pending_trail.push_back(static_cast<char>(cp));
             else
-                chunks.back().trail_punct.push_back(text[i]);
-            i++;
+                pending_lead.push_back(static_cast<char>(cp));
             continue;
         }
 
-        auto [cp, bytes] = next_utf8(text, i);
-        for (int b = 0; b < bytes; ++b) {
-            int shift = BITS_PER_SOUND * (bytes - 1 - b);
-            chunks.push_back(
-                { .value = static_cast<int>((cp >> shift) & SOUND_MASK),
-                  .mode = bytes,
-                  .is_first_byte = (b == 0),
-                  .lead_punct = (b == 0) ? std::move(pending_lead) : "",
-                  .trail_punct = "" });
-            pending_lead.clear();
-        }
+        // Emit the codepoint
+        int bytes = codepoint_byte_width(cp);
+        emit_codepoint(cp, bytes);
     }
-    return chunks;
+
+    // Flush any trailing punctuation left after the final sound.
+    if (!pending_trail.empty())
+        out << pending_trail;
+    if (!state.any_chunk_emitted && !pending_lead.empty())
+        out << ' ' << pending_lead;
+
+    out << ' ' << cfg.footer;
+    return {};
 }
 
-inline auto encode(std::string_view text, const Settings &cfg,
-                   uint64_t seed = 1337ULL)
+auto encode(std::string_view text, const Settings &cfg, uint64_t seed = 64)
     -> std::expected<std::string, PuplangError> {
-    auto tablex = build_sound_table(cfg.sounds);
-    if (!tablex)
-        return std::unexpected(tablex.error());
-    auto &table = *tablex;
-
-    auto chunks = tokenize_input_to_chunks(text);
-
-    std::mt19937_64 rng(64);
-
-    // Locate eligible chunks that support stretched "howl" representations
-    std::vector<size_t> stretchable;
-    for (size_t i = 0; i < chunks.size(); ++i) {
-        const auto &list = table[chunks[i].value];
-        if (!list.empty() && list.back().size() > list.front().size()) {
-            stretchable.push_back(i);
-        }
-    }
-    size_t howl_idx = stretchable.empty()
-                          ? static_cast<size_t>(-1)
-                          : stretchable[rng() % stretchable.size()];
-
-    std::string result = cfg.header;
-    
-    // No sound chunks, just emit punctuation
-    if (chunks.empty())
-        result += " " + std::string(text);
-
-    int current_mode = 1;
-
-    for (size_t i = 0; i < chunks.size(); ++i) {
-        auto &chunk = chunks[i];
-        std::string sound =
-            pick_candidate_word(table[chunk.value], i == howl_idx, rng);
-
-        // emit prefix switch only when the codepoint byte-width changes
-        if (chunk.is_first_byte && chunk.mode != current_mode) {
-            sound = cfg.prefixes[chunk.mode] + sound;
-            current_mode = chunk.mode;
-        }
-
-        result += " " + chunk.lead_punct + sound + chunk.trail_punct;
-    }
-
-    result += " " + cfg.footer;
-    return result;
+    std::istringstream in{ std::string(text) };
+    std::ostringstream out;
+    auto result = encode_stream(in, out, cfg, EncodeOptions{ .seed = seed });
+    if (!result)
+        return std::unexpected(result.error());
+    return out.str();
 }

@@ -6,6 +6,7 @@ mkdir -p web/dist
 
 em++ -std=c++26 -O3 \
   -Icpp-impl \
+  -Icpp-impl/third_party/utf8/source \
   web/puplang-wasm.cpp \
   -o web/dist/puplang.js \
   -sMODULARIZE=1 \

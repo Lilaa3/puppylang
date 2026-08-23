@@ -1,11 +1,14 @@
 #pragma once
 
 #include <expected>
+#include <iterator>
 #include <ranges>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "utf8.h"
 #include "utility.hpp"
 
 struct TokenParts {
@@ -38,7 +41,7 @@ struct ParsedWord {
 
 // Deconstructs a formatted token into punctuation, mode prefix, and the core
 // sound
-inline auto parse_encoded_word(std::string_view token, const Settings &cfg)
+auto parse_encoded_word(std::string_view token, const Settings &cfg)
     -> ParsedWord {
     auto [lead, body, trail] = split_punctuation(token);
     int mode_change = 0;
@@ -58,83 +61,112 @@ inline auto parse_encoded_word(std::string_view token, const Settings &cfg)
              .mode_change = mode_change };
 }
 
-// Appends a UTF-8 codepoint to a string
-inline void append_utf8(std::string &out, uint32_t cp) {
-    auto emit = [&](auto... bytes) {
-        (out.push_back(static_cast<char>(bytes)), ...);
-    };
-
-    if (cp <= 0x7F) {
-        emit(cp);
-    } else if (cp <= 0x7FF) {
-        emit(0xC0 | (cp >> 6), 0x80 | (cp & 0x3F));
-    } else if (cp <= 0xFFFF) {
-        emit(0xE0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3F), 0x80 | (cp & 0x3F));
+// Appends a UTF-8 codepoint to any string-like or stream-like output.
+// Works with std::string (push_back) and std::ostream (put).
+template <typename Out>
+    requires requires(Out o, char c) { o.push_back(c); } ||
+             requires(Out o, char c) { o.put(c); }
+void append_utf8(Out &out, uint32_t cp) {
+    if constexpr (requires { out.push_back(char{}); }) {
+        utf8::append(cp, std::back_inserter(out));
     } else {
-        emit(0xF0 | (cp >> 18),
-             0x80 | ((cp >> 12) & 0x3F),
-             0x80 | ((cp >> 6) & 0x3F),
-             0x80 | (cp & 0x3F));
+        utf8::append(cp, std::ostreambuf_iterator<char>(out));
     }
 }
 
-inline auto decode(std::string_view encoded_text, const Settings &cfg)
-    -> std::expected<std::string, PuplangError> {
-    auto tokens =
-        encoded_text | std::views::split(' ') |
-        std::views::transform([](auto r) { return std::string_view(r); }) |
-        std::views::filter([](auto sv) { return !sv.empty(); }) |
-        std::ranges::to<std::vector>();
+/// State maintained across token decoding.
+struct DecodeState {
+    CodePointMode current_mode = CodePointMode::ASCII;
+    uint32_t current_cp = 0;
+    uint8_t accumulated_chunks = 0;
+    bool seen_header = false;
+    std::string last_token; // For footer verification at EOF
+};
 
-    // Message must be bounded by configured header and footer
-    if (tokens.size() < 2 || tokens.front() != cfg.header ||
-        tokens.back() != cfg.footer) {
+/// Processes a single token, appending decoded output to `out`.
+auto decode_token(std::string_view token, const Settings &cfg,
+                  DecodeState &state, std::ostream &out)
+    -> std::expected<void, PuplangError> {
+    auto [lead, sound, trail, mode_change] = parse_encoded_word(token, cfg);
+
+    if (!state.seen_header) {
+        if (token != cfg.header)
+            return std::unexpected(PuplangError::invalid_structure);
+        state.seen_header = true;
+        return {};
+    }
+
+    out << lead;
+
+    if (mode_change != 0)
+        state.current_mode = static_cast<CodePointMode>(mode_change);
+
+    // Bare punctuation token, nothing to decode
+    if (sound.empty()) {
+        out << trail;
+        state.last_token = std::string(token);
+        return {};
+    }
+
+    auto sound_val = get_sound_value(sound, cfg.sounds);
+    if (!sound_val)
+        return std::unexpected(sound_val.error());
+
+    state.current_cp = (state.current_cp << BITS_PER_SOUND) |
+                       (static_cast<uint32_t>(*sound_val) & SOUND_MASK);
+    state.accumulated_chunks++;
+
+    // Once the required number of chunks for the current mode are buffered,
+    // emit the codepoint
+    if (state.accumulated_chunks == state.current_mode) {
+        append_utf8(out, state.current_cp);
+        state.current_cp = 0;
+        state.accumulated_chunks = 0;
+    }
+
+    out << trail;
+    state.last_token = std::string(token);
+    return {};
+}
+
+auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg)
+    -> std::expected<void, PuplangError> {
+    DecodeState state;
+    std::string token;
+
+    // Read first token (header)
+    if (!(in >> token) || token != cfg.header)
         return std::unexpected(PuplangError::invalid_structure);
+    state.seen_header = true;
+
+    // Read second token (first payload or footer if empty message)
+    std::string next_token;
+    if (!(in >> next_token))
+        return std::unexpected(PuplangError::invalid_structure);
+
+    // Process tokens with one-token lookahead
+    while (in >> token) {
+        auto result = decode_token(next_token, cfg, state, out);
+        if (!result)
+            return result;
+        next_token = std::move(token);
     }
 
-    std::string result;
-    auto current_mode = 1;   // Default mode is 1 chunk per codepoint (ASCII)
-    uint32_t current_cp = 0; // Bit-buffer accumulating 7-bit chunks
-    auto accumulated_chunks = 0;
-
-    // Process only payload tokens, excluding framing header and footer
-    for (size_t i = 1; i + 1 < tokens.size(); ++i) {
-        auto [lead, sound, trail, mode_change] =
-            parse_encoded_word(tokens[i], cfg);
-        result.append(lead);
-
-        if (mode_change != 0)
-            current_mode = mode_change;
-
-        // Bare punctuation token, nothing to decode
-        if (sound.empty()) {
-            result.append(trail);
-            continue;
-        }
-
-        auto sound_val = get_sound_value(sound, cfg.sounds);
-        if (!sound_val)
-            return std::unexpected(sound_val.error());
-
-        current_cp = (current_cp << BITS_PER_SOUND) |
-                     (static_cast<uint32_t>(*sound_val) & SOUND_MASK);
-        accumulated_chunks++;
-
-        // Once the required number of chunks for the current mode are buffered,
-        // emit the codepoint
-        if (accumulated_chunks == current_mode) {
-            append_utf8(result, current_cp);
-            current_cp = 0;
-            accumulated_chunks = 0;
-        }
-
-        result.append(trail);
-    }
-
+    if (next_token != cfg.footer) // next_token is now the footer
+        return std::unexpected(PuplangError::invalid_structure);
     // incomplete multibyte sequence at EOF.. oh.
-    if (accumulated_chunks != 0) {
+    if (state.accumulated_chunks != 0)
         return std::unexpected(PuplangError::missformed);
-    }
 
-    return result;
+    return {};
+}
+
+auto decode(std::string_view encoded_text, const Settings &cfg)
+    -> std::expected<std::string, PuplangError> {
+    std::istringstream in{ std::string(encoded_text) };
+    std::ostringstream out;
+    auto result = decode_stream(in, out, cfg);
+    if (!result)
+        return std::unexpected(result.error());
+    return out.str();
 }

@@ -32,6 +32,9 @@ auto run(std::string_view text, const Settings &cfg, bool do_encode) -> const
         case PuplangError::bark_collision:
             g_last_error = "sound table collision";
             break;
+        case PuplangError::invalid_utf8:
+            g_last_error = "invalid or truncated utf-8";
+            break;
         }
         return nullptr;
     }

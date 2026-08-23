@@ -24,7 +24,8 @@ enum class PuplangError {
     missformed,
     unknown_casing,
     invalid_structure,
-    bark_collision
+    bark_collision,
+    invalid_utf8
 };
 
 constexpr auto CASING_MULTIPLIER = static_cast<int>(Casing::Step);
@@ -44,6 +45,8 @@ struct WordInfo {
     int base_index;
     int var_offset;
 };
+
+enum CodePointMode { ASCII = 1, LATIN, BMP, SPECIAL };
 
 auto is_punct(char c) {
     return std::string_view(",!?:;'\".()[]{}").contains(c);
@@ -244,10 +247,15 @@ struct Settings {
         return cfg;
     }
 
-    static auto load(std::string_view path) -> Settings {
+    static auto load(std::string_view path) -> std::optional<Settings> {
         std::ifstream file{ std::string(path) };
+        if (!file)
+            return std::nullopt;
         std::ostringstream buffer;
         buffer << file.rdbuf();
-        return parse(buffer.str());
+        auto cfg = parse(buffer.str());
+        if (cfg.sounds.empty())
+            return std::nullopt;
+        return cfg;
     }
 };

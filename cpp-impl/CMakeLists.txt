@@ -6,3 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(puplang-cpp main.cpp)
 
+target_include_directories(puplang-cpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/utf8/source)
+target_include_directories(puplang-cpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/argparse/include)
+

@@ -1,0 +1,6 @@
+[submodule "cpp-impl/utf8"]
+	path = cpp-impl/third_party/utf8
+	url = https://github.com/nemtrif/utfcpp.git
+[submodule "cpp-impl/third_party/argparse"]
+	path = cpp-impl/third_party/argparse
+	url = https://github.com/p-ranav/argparse.git
