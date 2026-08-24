@@ -52,12 +52,10 @@
 
   <a class="info" href="mechanisms.html" title="How does puplang work?"><img src="info.svg" alt=""></a>
 
-  <script src="settings.js"></script>
   <script src="puplang.js"></script>
   <script>
     (async () => {
       const module = await createPuplangModule();
-      const settings = PUPLANG_SETTINGS;
 
       const text = document.getElementById("text");
       const woof = document.getElementById("woof");
@@ -65,14 +63,14 @@
       const setError = (el, on) => el.classList.toggle("error", on);
 
       text.addEventListener("input", () => {
-        const out = module.ccall("puplang_encode", "string", ["string", "string"], [text.value, settings]);
+        const out = module.ccall("puplang_encode", "string", ["string", "string"], [text.value, ""]);
         woof.value = out;
         setError(text, module.ccall("puplang_last_error", "string", [], []) !== "");
         setError(woof, false);
       });
 
       woof.addEventListener("input", () => {
-        const out = module.ccall("puplang_decode", "string", ["string", "string"], [woof.value, settings]);
+        const out = module.ccall("puplang_decode", "string", ["string", "string"], [woof.value, ""]);
         const err = module.ccall("puplang_last_error", "string", [], []);
         setError(woof, err !== "");
         setError(text, false);

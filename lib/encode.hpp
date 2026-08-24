@@ -271,11 +271,12 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
     return {};
 }
 
-auto encode(std::string_view text, const Settings &cfg, uint64_t seed = 64)
+auto encode(std::string_view text, const Settings &cfg,
+            const EncodeOptions &opts = {})
     -> std::expected<std::string, PuplangError> {
     std::istringstream in{ std::string(text) };
     std::ostringstream out;
-    auto result = encode_stream(in, out, cfg, EncodeOptions{ .seed = seed });
+    auto result = encode_stream(in, out, cfg, opts);
     if (!result)
         return std::unexpected(result.error());
     return out.str();

@@ -25,7 +25,8 @@ enum class PuplangError {
     unknown_casing,
     invalid_structure,
     bark_collision,
-    invalid_utf8
+    invalid_utf8,
+    io_error
 };
 
 constexpr auto CASING_MULTIPLIER = static_cast<int>(Casing::Step);

@@ -1,7 +1,8 @@
 
 /build
+/build-web
+/lib/build
 /.vscode
 /web/dist
 /web/node_modules
 *.webp~
-/cpp-impl/build

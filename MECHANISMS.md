@@ -22,7 +22,7 @@ But, if you've already played around with puplang you might be a bit confused by
 ### So... wait. How do all those different bark sounds equal the same letters? How do they equal numbers at all??
 
 The way `puplang` stores character codes is very simple.
-A list of barks with predefined max letters (runs) are stored in `settings.txt`. Each value is a continous pattern of:
+A list of barks with predefined max letters (runs) are stored in the settings file (`lib/default_settings.txt`, embedded into every build). Each value is a continous pattern of:
 
 Default variation (like `woof`) -> Different casing styles (like `WOOF`) -> Next word (repeat until all words are ran through) -> Add letters up to the defined count of that letter from left to right (so, `wwoof` is one value higher than `GROWL`).
 

@@ -2,20 +2,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-mkdir -p web/dist
+mkdir -p build-web web/dist
 
-em++ -std=c++26 -O3 \
-  -Icpp-impl \
-  -Icpp-impl/third_party/utf8/source \
-  web/puplang-wasm.cpp \
-  -o web/dist/puplang.js \
-  -sMODULARIZE=1 \
-  -sEXPORT_NAME=createPuplangModule \
-  -sEXPORTED_FUNCTIONS=_puplang_encode,_puplang_decode,_puplang_last_error,_malloc,_free \
-  -sEXPORTED_RUNTIME_METHODS=ccall \
-  -sALLOW_MEMORY_GROWTH=1 \
-  -sFILESYSTEM=0 \
-  -sENVIRONMENT=web,node \
-  -sSTRICT=1
+emcmake cmake -S . -B build-web \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_CLI=OFF \
+  -DBUILD_WASM=ON \
+  -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$(pwd)/web/dist"
+
+cmake --build build-web --target puplang-wasm -j
 
 bash web/copy_over.sh

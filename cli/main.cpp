@@ -1,4 +1,5 @@
 #include <exception>
+#include <expected>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -11,9 +12,7 @@
 
 #include <argparse/argparse.hpp>
 
-#include "decode.hpp"
-#include "encode.hpp"
-#include "utility.hpp"
+#include "puplang.hpp"
 
 enum class Mode { Encode, Decode, Help };
 
@@ -56,8 +55,8 @@ void add_common_args(argparse::ArgumentParser &parser, CliOptions &opts) {
         .default_value(std::string(""));
 
     parser.add_argument("-s", "--settings")
-        .help("Settings file (default: settings.txt)")
-        .default_value(std::string("settings.txt"));
+        .help("Settings file (default: built-in)")
+        .default_value(std::string(""));
 }
 
 } // namespace
@@ -78,7 +77,7 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
 
     encode_parser.add_argument("--seed")
         .help("RNG seed for encoding (default: 64)")
-        .default_value(uint64_t{64})
+        .default_value(uint64_t{ 64 })
         .scan<'u', uint64_t>();
     encode_parser.add_argument("--howl-chance")
         .help("Initial howl probability 0-1 (default: 0.2)")
@@ -93,7 +92,8 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
         .default_value(2)
         .scan<'i', int>();
     encode_parser.add_argument("--min-howl")
-        .help("Floor for howl chance so long forms stay reachable (default: 0.1)")
+        .help(
+            "Floor for howl chance so long forms stay reachable (default: 0.1)")
         .default_value(0.1)
         .scan<'g', double>();
     encode_parser.add_argument("--shape")
@@ -125,8 +125,7 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
         used = &encode_parser;
         opts.mode = Mode::Encode;
         opts.enc_opts.seed = encode_parser.get<uint64_t>("--seed");
-        opts.enc_opts.howl_chance =
-            encode_parser.get<double>("--howl-chance");
+        opts.enc_opts.howl_chance = encode_parser.get<double>("--howl-chance");
         opts.enc_opts.howl_decay = encode_parser.get<double>("--howl-decay");
         opts.enc_opts.howl.short_limit =
             encode_parser.get<int>("--short-limit");
@@ -163,58 +162,84 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    auto cfg = Settings::load(opts->settings);
-    if (!cfg) {
-        std::println(
-            stderr, "Failed to load settings file: {}", opts->settings);
-        return 1;
-    }
-
-    // Resolve the input source
-    std::ifstream in_file;
-    std::istringstream in_arg;
-    std::istream *in = &std::cin;
-    if (opts->input_file) {
-        in_file.open(*opts->input_file);
-        if (!in_file) {
+    std::optional<Settings> loaded_settings;
+    if (!opts->settings.empty()) {
+        loaded_settings = Settings::load(opts->settings);
+        if (!loaded_settings) {
             std::println(
-                stderr, "Failed to open input file: {}", *opts->input_file);
+                stderr, "Failed to load settings file: {}", opts->settings);
             return 1;
         }
-        in = &in_file;
-    } else if (opts->input != "-") {
-        in_arg.str(opts->input);
-        in = &in_arg;
     }
+    const Settings &cfg =
+        loaded_settings ? *loaded_settings : puplang::default_settings;
 
     // Resolve the output sink
-    std::ofstream out_file;
-    std::ostream *out = &std::cout;
     std::string output_path = opts->output;
     if (output_path.empty() && opts->input_file) {
         output_path = derive_output_name(*opts->input_file,
                                          opts->mode == Mode::Encode ? "encode"
                                                                     : "decode");
     }
-    if (!output_path.empty() && output_path != "-") {
-        out_file.open(output_path);
-        if (!out_file) {
-            std::println(stderr, "Failed to open output file: {}", output_path);
-            return 1;
+    bool to_file = !output_path.empty() && output_path != "-";
+
+    // File-to-file runs go through the library's streaming helper, which
+    // stages the output and only renames it into place on success.
+    std::expected<void, PuplangError> result =
+        std::unexpected(PuplangError::empty_input);
+    if (to_file && opts->input_file) {
+        result =
+            (opts->mode == Mode::Encode)
+                ? puplang::encode_file(
+                      *opts->input_file, output_path, cfg, opts->enc_opts)
+                : puplang::decode_file(*opts->input_file, output_path, cfg);
+    } else {
+        // Resolve the input source
+        std::ifstream in_file;
+        std::istringstream in_arg;
+        std::istream *in = &std::cin;
+        if (opts->input_file) {
+            in_file.open(*opts->input_file);
+            if (!in_file) {
+                std::println(
+                    stderr, "i/o error: cannot open '{}'", *opts->input_file);
+                return 1;
+            }
+            in = &in_file;
+        } else if (opts->input != "-") {
+            in_arg.str(opts->input);
+            in = &in_arg;
         }
-        out = &out_file;
+
+        std::ofstream out_file;
+        std::ostream *out = &std::cout;
+        if (to_file) {
+            out_file.open(output_path);
+            if (!out_file) {
+                std::println(
+                    stderr, "i/o error: cannot open '{}'", output_path);
+                return 1;
+            }
+            out = &out_file;
+        }
+
+        result = (opts->mode == Mode::Encode)
+                     ? encode_stream(*in, *out, cfg, opts->enc_opts)
+                     : decode_stream(*in, *out, cfg);
+        if (result)
+            *out << '\n';
     }
 
-    auto result = (opts->mode == Mode::Encode)
-                      ? encode_stream(*in, *out, *cfg, opts->enc_opts)
-                      : decode_stream(*in, *out, *cfg);
-    if (result)
-        *out << '\n';
     if (!result) {
-        std::println(stderr,
-                     "{} error: {}",
-                     opts->mode == Mode::Encode ? "Encode" : "Decode",
-                     static_cast<int>(result.error()));
+        if (result.error() == PuplangError::io_error && to_file &&
+            opts->input_file)
+            std::println(
+                stderr, "i/o error: {} -> {}", *opts->input_file, output_path);
+        else
+            std::println(stderr,
+                         "{} error: {}",
+                         opts->mode == Mode::Encode ? "Encode" : "Decode",
+                         puplang::error_message(result.error()));
         return 1;
     }
 

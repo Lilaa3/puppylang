@@ -13,8 +13,13 @@ You might also be asking, how does it work! Well imagine like a discord puppygir
 
 Dependencies: [CMake](https://cmake.org/) >= 3.10 and a C++26 compiler (clang 17+ or gcc 14+).
 
+The C++ implementation is split into a header-only core library (`lib/`)
+and a command-line frontend (`cli/`). The default sound table
+(`lib/default_settings.txt`) is embedded into the library at compile time
+via `#embed`, so no runtime settings file is needed unless you pass one.
+
 ```sh
-cmake -S cpp-impl -B build
+cmake -S . -B build
 cmake --build build
 ```
 
