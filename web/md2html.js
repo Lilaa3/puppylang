@@ -29,7 +29,7 @@ const html = `<!doctype html>
 <main class="mechanisms">
     <a class="repo" href="https://github.com/Lilaa3/puppylang" title="puplang on GitHub">
       <span>View on github</span>
-      <img src="Octicons-mark-github.svg" alt="">
+      <img src="Octicons-mark-github.svg" alt="" class="svg-color">
     </a>
     <article>
 ${body}

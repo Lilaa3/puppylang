@@ -30,22 +30,74 @@
       be calling you gay..
     </h1>
     <p>The CIA WISHES they were at my level, arf!</p>
-  
+
     <h2 style="margin-bottom:3px">In comes human words</h2>
     <div class="box">
       <textarea id="text" placeholder="type here"></textarea>
-      <button type="button" class="copy" aria-label="Copy text" title="Copy">
+      <button type="button" class="hold-button-anim textbox-side-button copy" aria-label="Copy text" title="Copy">
         <img src="copy.svg" alt="">
       </button>
+      <button id="settings-toggle" class="textbox-side-button settings-toggle" aria-label="Toggle settings"
+        title="Encode Options">
+        <img src="cog.svg" alt="">
+      </button>
+      <button type="button" id="randomize-seed" class="hold-button-anim textbox-side-button randomize-btn" aria-label="Randomize Seed"
+        title="Randomize Seed">
+        <img src="randomize.svg" alt="">
+      </button>
+    </div>
+    <div id="settings-panel" class="settings-panel hidden">
+      <div class="panel-head">
+        <h3>Encode Options</h3>
+        <button type="button" id="reset-settings">Reset</button>
+      </div>
+
+      <div class="settings-grid">
+        <label for="seed">Seed <input type="number" id="seed" min="0" max="18446744073709551615" value="64"></label>
+        <label for="set_free_extension_limit">Short Limit <input type="number" id="set_free_extension_limit" min="0"
+            max="10" value="0"></label>
+        <label for="max_short_extension">Extra Limit <input type="number" id="max_short_extension" min="0" max="10"
+            value="2"></label>
+
+        <label for="length_decay_rate">Extra Decay
+          <span><input type="range" id="length_decay_rate" min="0" max="100" value="50" step="0.1"><output
+              id="length_decay_rate-value">50.00%</output></span>
+        </label>
+
+        <label for="uppercase_weight">Uppercase Decay
+          <span><input type="range" id="uppercase_weight" min="0" max="100" step="0.1" value="40"><output
+              id="uppercase_weight-value">40.00%</output></span>
+        </label>
+        <div style="margin-bottom: 0.5rem;"></div>
+<label for="howl-enabled" class="toggle-row">
+  <span><img src="howling.svg" alt="" class="howl-icon svg-color"> Howling</span>
+  <input type="checkbox" id="howl-enabled" checked>
+</label>
+
+        <div class="howl-option">
+          <label for="initial_howl_chance">Howl Chance
+            <span><input type="range" id="initial_howl_chance" min="0" max="100" step="0.1" value="20"><output
+                id="initial_howl_chance-value">20.00%</output></span>
+          </label>
+          <label for="howl_decay">Howl Decay
+            <span><input type="range" id="howl_decay" min="0" max="100" step="0.1" value="50"><output
+                id="howl_decay-value">50.00%</output></span>
+          </label>
+          <label for="min_howl">Min Howl
+            <span><input type="range" id="min_howl" min="0" max="100" step="0.1" value="10"><output
+                id="min_howl-value">10.00%</output></span>
+          </label>
+        </div>
+      </div>
     </div>
     <h2 style="margin-bottom:3px">Out goes <i>*woof*</i></h2>
     <div class="box">
       <textarea id="woof" placeholder="woof here" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
-      <button type="button" class="copy" aria-label="Copy woof" title="Copy">
+      <button type="button" class="copy textbox-side-button" aria-label="Copy woof" title="Copy">
         <img src="copy.svg" alt="">
       </button>
     </div>
-  
+
   </main>
 
   <footer>🐾 © 2026 Lilaa3</footer>
@@ -53,45 +105,7 @@
   <a class="info" href="mechanisms.html" title="How does puplang work?"><img src="info.svg" alt=""></a>
 
   <script src="puplang.js"></script>
-  <script>
-    (async () => {
-      const module = await createPuplangModule();
-
-      const text = document.getElementById("text");
-      const woof = document.getElementById("woof");
-
-      const setError = (el, on) => el.classList.toggle("error", on);
-
-      text.addEventListener("input", () => {
-        const out = module.ccall("puplang_encode", "string", ["string", "string"], [text.value, ""]);
-        woof.value = out;
-        setError(text, module.ccall("puplang_last_error", "string", [], []) !== "");
-        setError(woof, false);
-      });
-
-      woof.addEventListener("input", () => {
-        const out = module.ccall("puplang_decode", "string", ["string", "string"], [woof.value, ""]);
-        const err = module.ccall("puplang_last_error", "string", [], []);
-        setError(woof, err !== "");
-        setError(text, false);
-        if (err === "") {
-          text.value = out;
-        }
-      });
-
-      document.querySelectorAll(".box").forEach(box => {
-        const ta = box.querySelector("textarea");
-        const btn = box.querySelector(".copy");
-        btn.addEventListener("click", async () => {
-          const value = ta.value;
-          btn.classList.add("copied");
-          setTimeout(() => btn.classList.remove("copied"), 1200);
-          if (!value) return;
-          await navigator.clipboard.writeText(value);
-        });
-      });
-    })();
-  </script>
+  <script src="script.js"></script>
 </body>
 
 </html>

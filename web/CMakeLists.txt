@@ -20,7 +20,7 @@ target_link_options(puplang-wasm PRIVATE
     "SHELL:-O3"
     "SHELL:-sMODULARIZE=1"
     "SHELL:-sEXPORT_NAME=createPuplangModule"
-    "SHELL:-sEXPORTED_FUNCTIONS=_puplang_encode,_puplang_decode,_puplang_last_error,_malloc,_free"
+    "SHELL:-sEXPORTED_FUNCTIONS=_puplang_encode,_puplang_decode,_puplang_last_error,_puplang_set_seed,_puplang_set_initial_howl_chance,_puplang_set_howl_decay,_puplang_set_free_extension_limit,_puplang_set_min_howl,_puplang_set_length_decay_rate,_puplang_set_howl_enabled,_puplang_set_uppercase_weight,_puplang_set_max_short_extension,_malloc,_free"
     "SHELL:-sEXPORTED_RUNTIME_METHODS=ccall"
     "SHELL:-sALLOW_MEMORY_GROWTH=1"
     "SHELL:-sFILESYSTEM=0"

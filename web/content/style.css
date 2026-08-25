@@ -106,10 +106,35 @@ p {
   font-size: 1.25rem;
 }
 
+.svg-color {
+  filter: brightness(0) saturate(100%) invert(96%) sepia(9%) saturate(785%) hue-rotate(42deg) brightness(94%) contrast(94%);
+}
+
+button,
+input[type="number"] {
+  border: 2px solid rgba(22, 32, 32, 1);
+  border-radius: 8px;
+  background: #eaf7d8;
+  color: #000;
+  box-shadow: 1px 2px 0 rgba(22, 32, 32, 1);
+}
+
+.pressed,
+.pressed:hover,
+button:active {
+  border-color: #2f9e44;
+  background: #b2f2bb;
+  transform: translate(0.5px, 1px);
+}
+
+button:hover {
+  background: #d8efc2;
+}
+
 .box {
   position: relative;
   width: 100%;
-  flex: 1 1 0;
+  height: 20vh;
   min-height: 125px;
   max-height: 300px;
   display: flex;
@@ -142,7 +167,7 @@ textarea.error {
   box-shadow: 2px 3px 0 rgba(22, 32, 32, 1);
 }
 
-.copy {
+.textbox-side-button {
   position: absolute;
   top: 0px;
   right: -35px;
@@ -160,21 +185,94 @@ textarea.error {
   box-shadow: 1px 2px 0 rgba(22, 32, 32, 1);
 }
 
-.copy:hover {
-  background: #d8efc2;
+.copy.pressed img {
+  content: url("check-r.svg");
 }
 
-.copy:active {
+.settings-toggle {
+  top: 35px;
+}
+
+.randomize-btn {
+  top: 70px;
+}
+
+.settings-panel {
+  width: 100%;
+  max-width: 380px;
+  margin: 1rem auto;
+  padding: 1rem;
+  background: rgba(10, 18, 15, .85);
+  border: 2px solid #162020;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.settings-panel button:active,
+.settings-panel button:active:hover {
+  border-color: #2f9e44;
+  background: #b2f2bb;
   transform: translate(0.5px, 1px);
 }
 
-.copy.copied {
-  border-color: #2f9e44;
-  background: #b2f2bb;
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
 }
 
-.copy.copied img {
-  content: url("check-r.svg");
+.panel-head h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #aad8c5;
+}
+
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-grid label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.1rem;
+}
+
+.settings-grid input[type="number"] {
+  width: 45px;
+}
+
+.settings-grid span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.settings-grid output {
+  display: inline-block;
+  min-width: 4rem;
+  text-align: right;
+}
+
+.toggle-row span {
+  display: inline-flex;
+}
+
+.toggle-row .howl-icon {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.box textarea {
+  resize: vertical;
+  field-sizing: fixed;
+}
+
+.hidden {
+  display: none;
 }
 
 footer {
@@ -232,6 +330,10 @@ footer {
   transition: background .1s;
   box-shadow: 4px 6px 0px rgb(38, 44, 51);
   outline: 3px solid rgb(7, 83, 83);
+}
+
+.repo .svg-color {
+  filter: brightness(0) saturate(100%) invert(92%) sepia(8%) saturate(816%) hue-rotate(100deg) brightness(91%) contrast(88%);
 }
 
 .repo:hover {

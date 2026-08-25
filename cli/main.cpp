@@ -79,27 +79,45 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
         .help("RNG seed for encoding (default: 64)")
         .default_value(uint64_t{ 64 })
         .scan<'u', uint64_t>();
-    encode_parser.add_argument("--howl-chance")
+    encode_parser.add_argument("--free-extension-limit")
+        .help("Extra letters counted as a penalty-less change (default: 0)")
+        .default_value(0)
+        .scan<'u', uint>();
+    encode_parser.add_argument("--max-short-extension")
+        .help("Extra letters that don't count as a howl. Past these, the "
+              "chance gets very unlikely, and impossible if howls are "
+              "disabled. (default: 2)")
+        .default_value(2)
+        .scan<'u', uint>();
+    encode_parser.add_argument("--length-decay-rate")
+        .help("Past the free extension limit, the chance of each extra letter "
+              "gets decreased exponentially by this value."
+              "(default: 0.4)")
+        .default_value(0.4)
+        .scan<'g', double>();
+    encode_parser.add_argument("--uppercase-weight")
+        .help("Weight of uppercase letters. Less is less common. Titled words "
+              "are only affected by half of this value. (default: 1.0)")
+        .default_value(1.0)
+        .scan<'g', double>();
+
+    encode_parser.add_argument("--howl-enabled")
+        .help("Enable howls. A howl is a sound past the free extension limit "
+              "thats made less uncommon. (default: true)")
+        .default_value(true)
+        .implicit_value(true);
+
+    encode_parser.add_argument("--initial-howl-chance")
         .help("Initial howl probability 0-1 (default: 0.2)")
         .default_value(0.2)
         .scan<'g', double>();
     encode_parser.add_argument("--howl-decay")
-        .help("Howl chance multiplier after each howl (default: 0.5)")
+        .help("Howl chance decay multiplier after each howl (default: 0.5)")
         .default_value(0.5)
         .scan<'g', double>();
-    encode_parser.add_argument("--short-limit")
-        .help("Extra letters counted as a tiny change (default: 2)")
-        .default_value(2)
-        .scan<'i', int>();
     encode_parser.add_argument("--min-howl")
-        .help(
-            "Floor for howl chance so long forms stay reachable (default: 0.1)")
+        .help("Floor for howl chance (default: 0.1)")
         .default_value(0.1)
-        .scan<'g', double>();
-    encode_parser.add_argument("--shape")
-        .help("Per-letter decay; closer to 1 = flatter short variation "
-              "(default: 0.9)")
-        .default_value(0.9)
         .scan<'g', double>();
 
     program.add_subparser(encode_parser);
@@ -125,12 +143,19 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
         used = &encode_parser;
         opts.mode = Mode::Encode;
         opts.enc_opts.seed = encode_parser.get<uint64_t>("--seed");
-        opts.enc_opts.howl_chance = encode_parser.get<double>("--howl-chance");
+        opts.enc_opts.free_extension_limit =
+            encode_parser.get<uint>("--free-extension-limit");
+        opts.enc_opts.max_short_extension =
+            encode_parser.get<uint>("--max-short-extension");
+        opts.enc_opts.length_decay_rate =
+            encode_parser.get<double>("--length-decay-rate");
+        opts.enc_opts.uppercase_weight =
+            encode_parser.get<double>("--uppercase-weight");
+        opts.enc_opts.howl_enabled = encode_parser.get<bool>("--howl-enabled");
+        opts.enc_opts.initial_howl_chance =
+            encode_parser.get<double>("--initial-howl-chance");
         opts.enc_opts.howl_decay = encode_parser.get<double>("--howl-decay");
-        opts.enc_opts.howl.short_limit =
-            encode_parser.get<int>("--short-limit");
-        opts.enc_opts.howl.min_howl = encode_parser.get<double>("--min-howl");
-        opts.enc_opts.howl.shape = encode_parser.get<double>("--shape");
+        opts.enc_opts.min_howl = encode_parser.get<double>("--min-howl");
     } else {
         used = &decode_parser;
         opts.mode = Mode::Decode;

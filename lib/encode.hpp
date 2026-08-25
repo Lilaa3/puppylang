@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <expected>
+#include <format>
 #include <fstream>
 #include <random>
 #include <span>
@@ -15,6 +16,39 @@
 #include "utf8.h"
 #include "utility.hpp"
 #include <assert.h>
+
+struct SoundChunk {
+    uint8_t value;      // 7-bit value
+    CodePointMode mode; // UTF-8 byte width (1 to 4)
+    bool is_first_byte; // True if this chunk starts a new codepoint
+    std::string lead_punct;
+    std::string trail_punct;
+};
+
+struct EncodeOptions {
+    uint64_t seed = 64;
+    int free_extension_limit = 0; // extra letter count that won't get penalty
+    int max_short_extension = 2;
+    double length_decay_rate = 0.9; // gentle per-letter decay
+    double uppercase_weight = 0.4;
+
+    bool howl_enabled = true;
+    double howl_decay = 0.5;
+    double initial_howl_chance = 0.2;
+    double min_howl = 0.1; // floor so long forms stay reachable
+};
+
+/// State maintained across streaming encode calls.
+struct EncodeState {
+    CodePointMode current_mode = CodePointMode::ASCII;
+    EncodeOptions opts;
+    double howl_chance;
+    std::mt19937_64 rng;
+    bool any_chunk_emitted = false;
+
+    EncodeState(uint64_t seed, EncodeOptions opts)
+        : opts(opts), rng(seed), howl_chance(opts.initial_howl_chance) {}
+};
 
 /// Reconstructs the sound/word by increasing letter repeats from left to right,
 /// carrying over to the next letter once a letter reaches its max limit.
@@ -43,10 +77,15 @@ auto apply_casing(std::string word, Casing casing) -> std::string {
 /// Generates all possible sounds and groups them by their 0–127 value,
 /// sorted shortest-first so we can easily pick default/short OR elongated very
 /// excited howls
+struct SoundEntry {
+    std::string word;
+    Casing casing;
+};
+
 auto build_sound_table(const std::vector<WordInfo> &sounds)
-    -> std::expected<std::array<std::vector<std::string>, VALUE_MODULUS>,
+    -> std::expected<std::array<std::vector<SoundEntry>, VALUE_MODULUS>,
                      PuplangError> {
-    std::array<std::vector<std::string>, VALUE_MODULUS> table;
+    std::array<std::vector<SoundEntry>, VALUE_MODULUS> table;
 
     for (const auto &base : sounds) {
         int variations = run_combinations(base.runs);
@@ -57,7 +96,7 @@ auto build_sound_table(const std::vector<WordInfo> &sounds)
                 std::string word = apply_casing(base_word, casing);
                 // Only keep the word if the decoder can actually read it
                 if (auto val = get_sound_value(word, sounds); val) {
-                    table[*val].push_back(std::move(word));
+                    table[*val].push_back({ std::move(word), casing });
                 } else {
                     return std::unexpected(PuplangError::bark_collision);
                 }
@@ -66,45 +105,75 @@ auto build_sound_table(const std::vector<WordInfo> &sounds)
     }
 
     for (auto &words : table) {
-        std::ranges::sort(words, {}, &std::string::size);
-        auto [first, last] = std::ranges::unique(words);
+        std::ranges::sort(words.begin(),
+                          words.end(),
+                          [](const SoundEntry &a, const SoundEntry &b) {
+                              return a.word.size() < b.word.size();
+                          });
+        auto [first, last] = std::ranges::unique(
+            words, [](const SoundEntry &a, const SoundEntry &b) {
+                return a.word == b.word;
+            });
         words.erase(first, last);
     }
     return table;
 }
 
-struct HowlTuning {
-    int short_limit = 2;   // extra letters that still count as a "tiny" change
-    double min_howl = 0.1; // floor so long forms stay reachable
-    double shape = 0.9;    // gentle per-letter decay
-};
-
 /// Picks a candidate word.
 ///
-/// Variations that differ by only a few letters (up to howl.short_limit extra
-/// characters) are all "normal" and commonly used with nearly equal odds.
-/// Beyond that, longer forms are progressively rarer, and the overall chance of
-/// such a long howl equals howl_chance.
-auto pick_candidate_word(std::span<const std::string> candidates,
-                         double howl_chance, const HowlTuning &howl, auto &rng)
-    -> std::string {
+/// Variations that differ by only a few letters (up to
+/// howl.free_extension_limit extra characters) are all "normal" and commonly
+/// used with nearly equal odds. Beyond that, longer forms are progressively
+/// rarer, and the overall chance of such a long howl equals
+/// initial_howl_chance.
+auto pick_candidate_word(std::span<const SoundEntry> candidates,
+                         EncodeState &state)
+    -> std::expected<std::pair<std::string, bool>,
+                     PuplangError> { // (word, is_howl)
     if (candidates.empty())
-        return "";
+        return std::unexpected(PuplangError::empty_input);
 
-    const double howl_prob = std::max(howl_chance, howl.min_howl);
-    const size_t min_len = candidates.front().size();
+    auto &options = state.opts;
 
+    const double howl_prob = std::max(state.howl_chance, options.min_howl);
+    const size_t min_len = candidates.front().word.size();
+
+    auto max_word_i = 0;
     // weight = SHAPE^(extra letters)
     std::vector<double> weight(candidates.size());
     double short_w = 0.0, howl_w = 0.0;
     for (size_t i = 0; i < candidates.size(); ++i) {
-        int extra =
-            static_cast<int>(candidates[i].size()) - static_cast<int>(min_len);
-        weight[i] = std::pow(howl.shape, extra);
-        if (extra <= howl.short_limit)
+        int extra = static_cast<int>(candidates[i].word.size()) -
+                    static_cast<int>(min_len);
+        auto past_limit = std::max(0, extra - options.free_extension_limit);
+
+        // if past limit, each letter past the short limit loses weight
+        // exponentially
+        if (past_limit > 0)
+            weight[i] = std::pow(options.length_decay_rate, past_limit);
+        else
+            weight[i] = 1.0;
+
+        // if the candidate is upper, decay according to uppercase_weight
+        if (candidates[i].casing == Casing::Upper)
+            weight[i] *= options.uppercase_weight;
+        else if (candidates[i].casing == Casing::Title)
+            weight[i] *= options.uppercase_weight * 0.5;
+
+        // if the candidate is a howl, add it to the howl weight
+        if (extra <= options.max_short_extension)
             short_w += weight[i];
         else
             howl_w += weight[i];
+
+        if (past_limit <= options.max_short_extension)
+            max_word_i = i;
+    }
+    if (!options.howl_enabled) {
+        auto start = weight.begin();
+        auto end = weight.begin() + max_word_i + 1;
+        auto index = std::discrete_distribution<size_t>(start, end)(state.rng);
+        return std::pair{ candidates[index].word, false };
     }
 
     // Rescale long forms so the overall howl chance equals howl_prob, keeping
@@ -112,55 +181,34 @@ auto pick_candidate_word(std::span<const std::string> candidates,
     if (howl_w > 0.0) {
         const double scale = (short_w * howl_prob / (1.0 - howl_prob)) / howl_w;
         for (size_t i = 0; i < candidates.size(); ++i) {
-            int extra = static_cast<int>(candidates[i].size()) -
+            int extra = static_cast<int>(candidates[i].word.size()) -
                         static_cast<int>(min_len);
-            if (extra > howl.short_limit)
+            if (i > max_word_i)
                 weight[i] *= scale;
         }
     }
 
-    return candidates[std::discrete_distribution<size_t>(weight.begin(),
-                                                         weight.end())(rng)];
+    auto start = weight.begin();
+    auto end = weight.end();
+    auto index = std::discrete_distribution<size_t>(start, end)(state.rng);
+    return std::pair{ candidates[index].word, index > max_word_i };
 }
 
-struct SoundChunk {
-    uint8_t value;      // 7-bit value
-    CodePointMode mode; // UTF-8 byte width (1 to 4)
-    bool is_first_byte; // True if this chunk starts a new codepoint
-    std::string lead_punct;
-    std::string trail_punct;
-};
-
-/// State maintained across streaming encode calls.
-struct EncodeState {
-    CodePointMode current_mode = CodePointMode::ASCII;
-    float howl_chance;
-    const float howl_decay;
-    HowlTuning howl;
-    std::mt19937_64 rng;
-    bool any_chunk_emitted = false;
-
-    EncodeState(uint64_t seed, double hc, double hd, HowlTuning h)
-        : howl_chance(hc), howl_decay(hd), howl(std::move(h)), rng(seed) {}
-};
-
-void encode_chunk(
+auto encode_chunk(
     const SoundChunk &chunk,
-    const std::array<std::vector<std::string>, VALUE_MODULUS> &table,
-    const Settings &cfg, EncodeState &state, std::ostream &out) {
+    const std::array<std::vector<SoundEntry>, VALUE_MODULUS> &table,
+    const Settings &cfg, EncodeState &state, std::ostream &out)
+    -> std::expected<void, PuplangError> {
     auto &candidates = table[chunk.value];
 
     assert(!candidates.empty());
 
-    std::string sound = pick_candidate_word(
-        candidates, state.howl_chance, state.howl, state.rng);
-
-    // Only decay if considered a howl
-    size_t min_len = candidates.front().size();
-    int extra = static_cast<int>(sound.size()) - static_cast<int>(min_len);
-    bool is_howl = extra > state.howl.short_limit;
+    auto sound_result = pick_candidate_word(candidates, state);
+    if (!sound_result)
+        return std::unexpected(sound_result.error());
+    auto [sound, is_howl] = sound_result.value();
     if (is_howl) {
-        state.howl_chance *= state.howl_decay;
+        state.howl_chance *= state.opts.howl_decay;
     }
 
     // Emit prefix switch only when the codepoint byte-width changes
@@ -171,14 +219,9 @@ void encode_chunk(
 
     out << ' ' << chunk.lead_punct << sound << chunk.trail_punct;
     state.any_chunk_emitted = true;
-}
 
-struct EncodeOptions {
-    uint64_t seed = 64;
-    double howl_chance = 0.2;
-    double howl_decay = 0.5;
-    HowlTuning howl;
-};
+    return {};
+}
 
 // Returns the UTF-8 byte width (1-4) for a valid codepoint.
 inline auto codepoint_byte_width(uint32_t cp) -> int {
@@ -200,7 +243,7 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
     }
     auto &table = *tablex;
 
-    EncodeState state(opts.seed, opts.howl_chance, opts.howl_decay, opts.howl);
+    EncodeState state(opts.seed, opts);
 
     // Read entire input into string
     std::string input((std::istreambuf_iterator<char>(in)),
@@ -217,7 +260,8 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
     std::string pending_trail; // punctuation after the previous sound
     bool sound_since_punct = false;
 
-    auto emit_codepoint = [&](uint32_t cp, int bytes) -> void {
+    auto emit_codepoint = [&](uint32_t cp,
+                              int bytes) -> std::expected<void, PuplangError> {
         // Trailing punctuation belongs after the previous sound, so it is
         // flushed right before the following sound starts.
         if (!pending_trail.empty()) {
@@ -235,9 +279,12 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
             };
             if (b == 0)
                 pending_lead.clear();
-            encode_chunk(chunk, table, cfg, state, out);
+            auto result = encode_chunk(chunk, table, cfg, state, out);
+            if (!result)
+                return std::unexpected(result.error());
         }
         sound_since_punct = true;
+        return {};
     };
 
     // Iterate through codepoints using utf8cpp
@@ -258,7 +305,9 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
 
         // Emit the codepoint
         int bytes = codepoint_byte_width(cp);
-        emit_codepoint(cp, bytes);
+        auto result = emit_codepoint(cp, bytes);
+        if (!result)
+            return std::unexpected(result.error());
     }
 
     // Flush any trailing punctuation left after the final sound.
