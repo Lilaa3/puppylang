@@ -41,8 +41,8 @@
         title="Encode Options">
         <img src="cog.svg" alt="">
       </button>
-      <button type="button" id="randomize-seed" class="hold-button-anim textbox-side-button randomize-btn" aria-label="Randomize Seed"
-        title="Randomize Seed">
+      <button type="button" id="randomize-seed" class="hold-button-anim textbox-side-button randomize-btn"
+        aria-label="Randomize Seed" title="Randomize Seed">
         <img src="randomize.svg" alt="">
       </button>
     </div>
@@ -53,40 +53,67 @@
       </div>
 
       <div class="settings-grid">
-        <label for="seed">Seed <input type="number" id="seed" min="0" max="18446744073709551615" value="64"></label>
-        <label for="set_free_extension_limit">Free Extension Limit <input type="number" id="set_free_extension_limit" min="0"
-            max="10" value="0"></label>
-        <label for="max_short_extension">Max Short Extension <input type="number" id="max_short_extension" min="0" max="10"
-            value="2"></label>
+        <div class="setting-item">
+          <label for="seed">Seed</label>
+          <input type="number" id="seed" min="0" max="18446744073709551615" value="64">
+        </div>
 
-        <label for="length_decay_rate">Length Decay Rate
-          <span><input type="range" id="length_decay_rate" min="0" max="100" value="50" step="0.1"><output
-              id="length_decay_rate-value">50.00%</output></span>
-        </label>
+        <div class="setting-item">
+          <label for="set_free_extension_limit">Free Extension Limit</label>
+          <input type="number" id="set_free_extension_limit" min="0" max="10" value="0">
+        </div>
 
-        <label for="uppercase_weight">Uppercase Weight
-          <span><input type="range" id="uppercase_weight" min="0" max="100" step="0.1" value="40"><output
-              id="uppercase_weight-value">40.00%</output></span>
-        </label>
-        <div style="margin-bottom: 0.5rem;"></div>
-<label for="howl-enabled" class="toggle-row">
-  <span><img src="howling.svg" alt="" class="howl-icon svg-color"> Howling</span>
-  <input type="checkbox" id="howl-enabled" checked>
-</label>
+        <div class="setting-item">
+          <label for="max_short_extension">Max Short Extension</label>
+          <input type="number" id="max_short_extension" min="0" max="10" value="2">
+        </div>
+
+        <div class="setting-item setting-slider">
+          <label for="length_decay_rate">Length Decay Rate</label>
+          <div class="control-group">
+            <input type="range" id="length_decay_rate" min="0" max="100" value="50" step="0.1">
+            <output id="length_decay_rate-value">50.00%</output>
+          </div>
+        </div>
+
+        <div class="setting-item setting-slider">
+          <label for="uppercase_weight">Uppercase Weight</label>
+          <div class="control-group">
+            <input type="range" id="uppercase_weight" min="0" max="100" step="0.1" value="40">
+            <output id="uppercase_weight-value">40.00%</output>
+          </div>
+        </div>
+
+        <div class="setting-item toggle-row">
+          <label for="howl-enabled">
+            <img src="howling.svg" alt="" class="howl-icon svg-color"> Howling
+          </label>
+          <input type="checkbox" id="howl-enabled" checked>
+        </div>
 
         <div class="howl-option">
-          <label for="initial_howl_chance">Howl Chance
-            <span><input type="range" id="initial_howl_chance" min="0" max="100" step="0.1" value="20"><output
-                id="initial_howl_chance-value">20.00%</output></span>
-          </label>
-          <label for="howl_decay">Howl Decay
-            <span><input type="range" id="howl_decay" min="0" max="100" step="0.1" value="50"><output
-                id="howl_decay-value">50.00%</output></span>
-          </label>
-          <label for="min_howl">Minimum Howl Chance
-            <span><input type="range" id="min_howl" min="0" max="100" step="0.1" value="10"><output
-                id="min_howl-value">10.00%</output></span>
-          </label>
+          <div class="setting-item setting-slider">
+            <label for="initial_howl_chance">Howl Chance</label>
+            <div class="control-group">
+              <input type="range" id="initial_howl_chance" min="0" max="100" step="0.1" value="20">
+              <output id="initial_howl_chance-value">20.00%</output>
+            </div>
+          </div>
+
+          <div class="setting-item setting-slider">
+            <label for="howl_decay">Howl Decay</label>
+            <div class="control-group">
+              <input type="range" id="howl_decay" min="0" max="100" step="0.1" value="50">
+              <output id="howl_decay-value">50.00%</output>
+            </div>
+          </div>
+          <div class="setting-item setting-slider">
+            <label for="min_howl">Minimum Howl Chance</label>
+            <div class="control-group">
+              <input type="range" id="min_howl" min="0" max="100" step="0.1" value="10">
+              <output id="min_howl-value">10.00%</output>
+            </div>
+          </div>
         </div>
       </div>
     </div>
