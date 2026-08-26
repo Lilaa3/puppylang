@@ -145,13 +145,29 @@ button:active {
 }
 
 .box {
-  position: relative;
   width: 100%;
   height: 20vh;
   min-height: 125px;
   max-height: 300px;
   display: flex;
+  flex-direction: row;
+  gap: 5px;
+}
+
+.side-buttons {
+  display: flex;
   flex-direction: column;
+  gap: 5px;
+}
+
+.textbox-side-button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 textarea {
@@ -178,30 +194,6 @@ textarea:focus {
 textarea.error {
   border-color: #e5484d;
   background: #ffd9d9;
-}
-
-.textbox-side-button {
-  position: absolute;
-  right: -35px;
-  z-index: 2;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.textbox-side-button.copy {
-  top: 0;
-}
-
-.textbox-side-button.settings-toggle {
-  top: 35px;
-}
-
-.textbox-side-button.randomize-btn {
-  top: 70px;
 }
 
 .copy.pressed img {

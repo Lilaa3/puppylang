@@ -34,17 +34,19 @@
     <h2 style="margin-bottom:3px">In comes human words</h2>
     <div class="box">
       <textarea id="text" placeholder="type here"></textarea>
-      <button type="button" class="hold-button-anim textbox-side-button copy" aria-label="Copy text" title="Copy">
-        <img src="copy.svg" alt="">
-      </button>
-      <button id="settings-toggle" class="textbox-side-button settings-toggle" aria-label="Toggle settings"
-        title="Encode Options">
-        <img src="cog.svg" alt="">
-      </button>
-      <button type="button" id="randomize-seed" class="hold-button-anim textbox-side-button randomize-btn"
-        aria-label="Randomize Seed" title="Randomize Seed">
-        <img src="randomize.svg" alt="">
-      </button>
+      <div class="side-buttons">
+        <button type="button" class="hold-button-anim textbox-side-button copy" aria-label="Copy text" title="Copy">
+          <img src="copy.svg" alt="">
+        </button>
+        <button id="settings-toggle" class="textbox-side-button settings-toggle" aria-label="Toggle settings"
+          title="Encode Options">
+          <img src="cog.svg" alt="">
+        </button>
+        <button type="button" id="randomize-seed" class="hold-button-anim textbox-side-button randomize-btn"
+          aria-label="Randomize Seed" title="Randomize Seed">
+          <img src="randomize.svg" alt="">
+        </button>
+      </div>
     </div>
     <div id="settings-panel" class="settings-panel hidden">
       <div class="panel-head">
@@ -120,9 +122,11 @@
     <h2 style="margin-bottom:3px">Out goes <i>*woof*</i></h2>
     <div class="box">
       <textarea id="woof" placeholder="woof here" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
-      <button type="button" class="copy textbox-side-button" aria-label="Copy woof" title="Copy">
-        <img src="copy.svg" alt="">
-      </button>
+      <div class="side-buttons">
+        <button type="button" class="copy hold-button-anim textbox-side-button" aria-label="Copy woof" title="Copy">
+          <img src="copy.svg" alt="">
+        </button>
+      </div>
     </div>
 
   </main>
