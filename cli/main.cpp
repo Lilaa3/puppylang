@@ -77,17 +77,17 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
 
     encode_parser.add_argument("--seed")
         .help("RNG seed for encoding (default: 64)")
-        .default_value(uint64_t{ 64 })
+        .default_value((uint64_t)64)
         .scan<'u', uint64_t>();
     encode_parser.add_argument("--free-extension-limit")
         .help("Extra letters counted as a penalty-less change (default: 0)")
-        .default_value(0)
+        .default_value(0u)
         .scan<'u', uint>();
     encode_parser.add_argument("--max-short-extension")
         .help("Extra letters that don't count as a howl. Past these, the "
               "chance gets very unlikely, and impossible if howls are "
               "disabled. (default: 2)")
-        .default_value(2)
+        .default_value(2u)
         .scan<'u', uint>();
     encode_parser.add_argument("--length-decay-rate")
         .help("Past the free extension limit, the chance of each extra letter "
