@@ -7,6 +7,7 @@
 #include <expected>
 #include <format>
 #include <fstream>
+#include <iterator>
 #include <random>
 #include <span>
 #include <string>
@@ -245,15 +246,6 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
 
     EncodeState state(opts.seed, opts);
 
-    // Read entire input into string
-    std::string input((std::istreambuf_iterator<char>(in)),
-                      std::istreambuf_iterator<char>());
-
-    // Validate UTF-8
-    if (!utf8::is_valid(input.begin(), input.end())) {
-        return std::unexpected(PuplangError::invalid_utf8);
-    }
-
     out << cfg.header;
 
     std::string pending_lead;  // punctuation before the next sound
@@ -287,12 +279,14 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
         return {};
     };
 
-    // Iterate through codepoints using utf8cpp
-    auto it = input.begin();
-    const auto end = input.end();
-
+    std::istreambuf_iterator<char> it(in), end;
     while (it != end) {
-        uint32_t cp = utf8::next(it, end);
+        uint32_t cp;
+        try {
+            cp = utf8::next(it, end);
+        } catch (const utf8::exception &) {
+            return std::unexpected(PuplangError::invalid_utf8);
+        }
 
         // Check if this codepoint is ASCII punctuation
         if (cp <= 0x7F && is_punct(static_cast<char>(cp))) {
