@@ -23,6 +23,7 @@ jobs:
 
       - name: Configure CMake
         run: cmake -S . -B build -DBUILD_CLI=ON -DBUILD_WASM=OFF
+          -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Release
         run: cmake --build build --config Release
