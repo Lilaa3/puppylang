@@ -1,5 +1,8 @@
 #include <expected>
+#include <functional>
 #include <string>
+
+#include <emscripten.h>
 
 #include "puplang.hpp"
 
@@ -10,12 +13,19 @@ std::string g_result;
 
 EncodeOptions g_opts;
 
+// Forwards progress to a host-supplied sink
+EM_JS(void, puplang_report_progress, (double v), {
+    // clang-format off
+    if (typeof Module !== "undefined" && Module.puplangProgressSink) {
+        Module.puplangProgressSink(v);
+    }
+    // clang-format on
+});
+
 auto run_encode(std::string_view text, std::string_view settings) -> const
     char * {
     std::expected<std::string, PuplangError> result =
-        settings.empty()
-            ? puplang::encode(text, puplang::default_settings, g_opts)
-            : puplang::encode(text, settings, g_opts);
+        puplang::encode(text, puplang::default_settings, g_opts);
     if (!result) {
         g_last_error = std::string(puplang::error_message(result.error()));
         return nullptr;
@@ -27,9 +37,7 @@ auto run_encode(std::string_view text, std::string_view settings) -> const
 
 auto run_decode(std::string_view text, std::string_view settings) -> const
     char * {
-    std::expected<std::string, PuplangError> result =
-        settings.empty() ? puplang::decode(text)
-                         : puplang::decode(text, settings);
+    std::expected<std::string, PuplangError> result = puplang::decode(text);
     if (!result) {
         g_last_error = std::string(puplang::error_message(result.error()));
         return nullptr;
@@ -83,4 +91,35 @@ extern "C" void puplang_set_uppercase_weight(double decay) {
 
 extern "C" void puplang_set_max_short_extension(int limit) {
     g_opts.max_short_extension = limit;
+}
+
+extern "C" const char *puplang_encode_file(const char *input_path,
+                                           const char *output_path) {
+    auto progress_callback = [](double v) { puplang_report_progress(v); };
+    std::expected<void, PuplangError> result =
+        puplang::encode_file(input_path,
+                             output_path,
+                             puplang::default_settings,
+                             g_opts,
+                             progress_callback,
+                             true);
+    if (!result) {
+        g_last_error = std::string(puplang::error_message(result.error()));
+    } else {
+        g_last_error.clear();
+    }
+    return g_last_error.c_str();
+}
+
+extern "C" const char *puplang_decode_file(const char *input_path,
+                                           const char *output_path) {
+    auto progress_callback = [](double v) { puplang_report_progress(v); };
+    std::expected<void, PuplangError> result =
+        puplang::decode_file(input_path, output_path, progress_callback, true);
+    if (!result) {
+        g_last_error = std::string(puplang::error_message(result.error()));
+    } else {
+        g_last_error.clear();
+    }
+    return g_last_error.c_str();
 }

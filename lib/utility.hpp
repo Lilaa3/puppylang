@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <expected>
 #include <fstream>
+#include <functional>
+#include <ios>
 #include <numeric>
 #include <optional>
 #include <ranges>
@@ -33,6 +35,45 @@ constexpr auto CASING_MULTIPLIER = static_cast<int>(Casing::Step);
 constexpr auto BITS_PER_SOUND = 7;
 constexpr uint32_t VALUE_MODULUS = 1u << BITS_PER_SOUND;
 constexpr uint32_t SOUND_MASK = VALUE_MODULUS - 1;
+
+class ProgressTracker {
+    std::function<void(double)> sink;
+    double last = -1.0;
+    double threshold = 0.0001;
+    double total = 0.0;
+
+  public:
+    explicit ProgressTracker(std::function<void(double)> sink, std::istream &in)
+        : sink(sink) {
+        calculate_total(in);
+    }
+
+    void report(double frac) {
+        if (!sink)
+            return;
+        if (frac >= 1.0 || frac - last > threshold) {
+            sink(frac);
+            last = frac;
+        }
+    }
+
+    void report_fraction(std::streamoff current) {
+        if (total <= 0)
+            return;
+        report(static_cast<double>(current) / total);
+    }
+
+  private:
+    void calculate_total(std::istream &in) {
+        in.clear();
+        in.seekg(0, std::ios::end);
+        const auto endpos = in.tellg();
+        in.clear();
+        in.seekg(0, std::ios::beg);
+        if (endpos > std::streampos(0))
+            total = static_cast<double>(std::streamoff(endpos));
+    }
+};
 
 // Represents a run of identical characters
 struct Run {

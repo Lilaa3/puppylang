@@ -1,6 +1,8 @@
 #pragma once
 
 #include <expected>
+#include <functional>
+#include <ios>
 #include <iterator>
 #include <ranges>
 #include <sstream>
@@ -129,20 +131,25 @@ auto decode_token(std::string_view token, const Settings &cfg,
     return {};
 }
 
-auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg)
+auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
+                   std::function<void(double)> progress = {})
     -> std::expected<void, PuplangError> {
     DecodeState state;
     std::string token;
+
+    ProgressTracker tracker{ progress, in };
 
     // Read first token (header)
     if (!(in >> token) || token != cfg.header)
         return std::unexpected(PuplangError::invalid_structure);
     state.seen_header = true;
+    tracker.report_fraction(std::streamoff(in.tellg()));
 
     // Read second token (first payload or footer if empty message)
     std::string next_token;
     if (!(in >> next_token))
         return std::unexpected(PuplangError::invalid_structure);
+    tracker.report_fraction(std::streamoff(in.tellg()));
 
     // Process tokens with one-token lookahead
     while (in >> token) {
@@ -150,6 +157,7 @@ auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg)
         if (!result)
             return result;
         next_token = std::move(token);
+        tracker.report_fraction(std::streamoff(in.tellg()));
     }
 
     if (next_token != cfg.footer) // next_token is now the footer
@@ -157,6 +165,8 @@ auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg)
     // incomplete multibyte sequence at EOF.. oh.
     if (state.accumulated_chunks != 0)
         return std::unexpected(PuplangError::missformed);
+
+    tracker.report(1.0);
 
     return {};
 }

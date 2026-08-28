@@ -80,78 +80,94 @@ inline auto decode(std::string_view text, std::string_view settings)
 
 namespace detail {
 
-template <typename Fx>
 // Handles .tmp file creation, rename and cleanup
+template <typename Fx>
 inline auto convert_file(Fx fx, std::string_view in_path,
-                         std::string_view out_path)
+                         std::string_view out_path, bool no_temp = false)
     -> std::expected<void, PuplangError> {
     std::ifstream in{ std::string(in_path) };
     if (!in)
         return std::unexpected(PuplangError::io_error);
 
     const std::filesystem::path dst{ std::string(out_path) };
-    const std::filesystem::path tmp{ std::string(out_path) + ".tmp" };
+    const std::filesystem::path target =
+        no_temp ? dst : std::filesystem::path{ std::string(out_path) + ".tmp" };
+
     auto cleanup = [&] {
-        std::error_code ignored;
-        std::filesystem::remove(tmp, ignored);
+        if (!no_temp) {
+            std::error_code ignored;
+            std::filesystem::remove(target, ignored);
+        }
     };
 
     {
-        std::ofstream out{ tmp };
+        std::ofstream out{ target };
         if (!out)
             return std::unexpected(PuplangError::io_error);
         auto result = fx(in, out);
         out.flush();
+        out.close();
         if (!result) {
             cleanup();
             return result;
         }
     } // stream is closed before the rename
 
+    if (no_temp)
+        return {};
+
     std::error_code ec;
-    std::filesystem::rename(tmp, dst, ec);
+    std::filesystem::rename(target, dst, ec);
     if (!ec)
         return {};
 
     cleanup();
     return std::unexpected(PuplangError::io_error);
 }
-
 } // namespace detail
 
 inline auto encode_file(std::string_view in_path, std::string_view out_path,
-                        const Settings &cfg, const EncodeOptions &opts = {})
+                        const Settings &cfg, const EncodeOptions &opts = {},
+                        std::function<void(double)> progress = {},
+                        bool no_temp = false)
     -> std::expected<void, PuplangError> {
     return detail::convert_file(
         [&](std::istream &in, std::ostream &out) {
-            return encode_stream(in, out, cfg, opts);
+            return encode_stream(in, out, cfg, opts, progress);
         },
         in_path,
-        out_path);
+        out_path,
+        no_temp);
 }
 
-inline auto encode_file(std::string_view in_path, std::string_view out_path,
-                        std::string_view settings,
-                        const EncodeOptions &opts = {})
+inline auto
+encode_file(std::string_view in_path, std::string_view out_path,
+            std::string_view settings, const EncodeOptions &opts = {},
+            std::function<void(double)> progress = {}, bool no_temp = false)
     -> std::expected<void, PuplangError> {
-    return encode_file(in_path, out_path, Settings::parse(settings), opts);
+    return encode_file(
+        in_path, out_path, Settings::parse(settings), opts, progress, no_temp);
 }
 
 inline auto decode_file(std::string_view in_path, std::string_view out_path,
-                        const Settings &cfg)
+                        const Settings &cfg,
+                        std::function<void(double)> progress = {},
+                        bool no_temp = false)
     -> std::expected<void, PuplangError> {
     return detail::convert_file(
         [&](std::istream &in, std::ostream &out) {
-            return decode_stream(in, out, cfg);
+            return decode_stream(in, out, cfg, progress);
         },
         in_path,
-        out_path);
+        out_path,
+        no_temp);
 }
 
 inline auto decode_file(std::string_view in_path, std::string_view out_path,
-                        std::string_view settings)
+                        std::function<void(double)> progress = {},
+                        bool no_temp = false)
     -> std::expected<void, PuplangError> {
-    return decode_file(in_path, out_path, Settings::parse(settings));
+    return decode_file(in_path, out_path, default_settings, progress, no_temp);
 }
 
 } // namespace puplang

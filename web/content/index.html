@@ -1,6 +1,28 @@
 <!doctype html>
 <html lang="en">
 
+<template id="status-panel-template">
+  <div class="status-panel">
+    <div class="download-area hidden">
+      <button type="button" class="download-btn">
+        <span>Download Result</span>
+      </button>
+    </div>
+
+    <div class="progress-area hidden">
+      <div class="progress-track">
+        <div class="progress-bar"></div>
+      </div>
+      <span class="progress-text">0%</span>
+    </div>
+
+    <div class="error-message hidden">
+      <img src="error.svg" alt="" class="error-icon">
+      <span class="error-text"></span>
+    </div>
+  </div>
+</template>
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -46,8 +68,16 @@
           aria-label="Randomize Seed" title="Randomize Seed">
           <img src="randomize.svg" alt="">
         </button>
+        <button type="button" id="encode-file-btn" class="hold-button-anim textbox-side-button"
+          aria-label="Encode from file" title="Encode from file">
+          <img src="upload.svg" alt="">
+        </button>
+        <input type="file" id="encode-file-input" accept="text/*" hidden>
       </div>
     </div>
+
+    <div id="encode-status"></div>
+
     <div id="settings-panel" class="settings-panel hidden">
       <div class="panel-head">
         <h3>Encode Options</h3>
@@ -126,8 +156,15 @@
         <button type="button" class="copy hold-button-anim textbox-side-button" aria-label="Copy woof" title="Copy">
           <img src="copy.svg" alt="">
         </button>
+        <button type="button" id="decode-file-btn" class="hold-button-anim textbox-side-button"
+          aria-label="Decode from file" title="Decode from file">
+          <img src="upload.svg" alt="">
+        </button>
+        <input type="file" id="decode-file-input" accept="text/*" hidden>
       </div>
     </div>
+
+    <div id="decode-status"></div>
 
   </main>
 

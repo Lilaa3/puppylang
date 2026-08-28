@@ -7,6 +7,7 @@
 #include <expected>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <random>
 #include <span>
@@ -236,7 +237,8 @@ inline auto codepoint_byte_width(uint32_t cp) -> int {
 }
 
 auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
-                   EncodeOptions opts = {})
+                   EncodeOptions opts = {},
+                   std::function<void(double)> progress = {})
     -> std::expected<void, PuplangError> {
     auto tablex = build_sound_table(cfg.sounds);
     if (!tablex) {
@@ -247,6 +249,8 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
     EncodeState state(opts.seed, opts);
 
     out << cfg.header;
+
+    ProgressTracker tracker{ progress, in };
 
     std::string pending_lead;  // punctuation before the next sound
     std::string pending_trail; // punctuation after the previous sound
@@ -288,6 +292,8 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
             return std::unexpected(PuplangError::invalid_utf8);
         }
 
+        tracker.report_fraction(std::streamoff(in.tellg()));
+
         // Check if this codepoint is ASCII punctuation
         if (cp <= 0x7F && is_punct(static_cast<char>(cp))) {
             if (sound_since_punct)
@@ -303,6 +309,8 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
         if (!result)
             return std::unexpected(result.error());
     }
+
+    tracker.report(1.0);
 
     // Flush any trailing punctuation left after the final sound.
     if (!pending_trail.empty())
