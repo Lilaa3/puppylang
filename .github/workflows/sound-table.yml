@@ -9,6 +9,7 @@ on:
 jobs:
   sound-table:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download CLI
         uses: actions/download-artifact@v4
