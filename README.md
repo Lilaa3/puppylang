@@ -55,8 +55,8 @@ You can dump the entire sound table straight from the CLI:
 ./puplang sounds -o sound_table.txt
 ```
 
-It includes every word and its equivalent values and ascii c representation.
-You can also download it from releases/artifacts.
+It includes every word alongside its equivalent value and ASCII C representation (for example `\n` or `\u{0}` or just `A`).
+You can also download it from the releases/artifacts.
 
 ## Development status
 
