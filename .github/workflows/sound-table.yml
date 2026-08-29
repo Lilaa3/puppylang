@@ -12,7 +12,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download CLI
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           name: puplang-cli
           path: .
@@ -20,13 +20,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Make executable
-        run: chmod +x puplang
+        run: chmod +x puplang-cli
 
       - name: Generate sound table
-        run: ./puplang sounds -o sound_table.txt
+        run: ./puplang-cli sounds -o sound_table.txt
 
       - name: Upload sound table
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: sound-table
           path: sound_table.txt
+          archive: false

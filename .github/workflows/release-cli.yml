@@ -29,7 +29,8 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Upload executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: puplang-cli
-          path: build/cli/puplang
+          path: build/cli/puplang-cli
+          archive: false

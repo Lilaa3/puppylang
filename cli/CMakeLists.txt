@@ -11,4 +11,4 @@ target_link_libraries(puplang-cli PRIVATE puplang)
 target_include_directories(puplang-cli PRIVATE
     ${CMAKE_SOURCE_DIR}/thirdparty/argparse/include)
 
-set_target_properties(puplang-cli PROPERTIES OUTPUT_NAME puplang)
+set_target_properties(puplang-cli PROPERTIES OUTPUT_NAME puplang-cli)
