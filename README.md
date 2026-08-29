@@ -7,6 +7,17 @@ You might also be asking, how does it work! Well imagine like a discord puppygir
 
 <sup>why would you ask me [to do that](MECHANISMS.md).,.</sup>
 
+## Thirdparty (CLI/Lib)
+
+- argparse — MIT License, © 2018 Pranav Srinivas Kumar <pranav.srinivas.kumar@gmail.com> — https://github.com/p-ranav/argparse
+- utf8-cpp — Boost Software License 1.0, © Nemanja Trifunovic — https://github.com/nemtrif/utfcpp
+
+## License
+
+Originally [UNLICENSE](https://unlicense.org/), now [MIT](https://en.wikipedia.org/wiki/MIT_License) for the sake of attribution and avoiding conflicts with other licenses. Argparse requires shipping with license, while utfcpp does not. I only care about source level attribution, like in boost, but I will use MIT for the sake of argparse.
+
+The external licenses are embedded into the cli by default and are included in the website under `licenses/`.
+
 ## Building
 
 ### C++

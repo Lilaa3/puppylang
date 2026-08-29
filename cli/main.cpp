@@ -1,3 +1,4 @@
+#include <cassert>
 #include <exception>
 #include <expected>
 #include <filesystem>
@@ -12,9 +13,21 @@
 
 #include <argparse/argparse.hpp>
 
+#ifdef PUPLANG_EMBED_LICENSES
+#include "licenses.hpp"
+#endif
+
 #include "puplang.hpp"
 
-enum class Mode { Encode, Decode, GenSounds, Help };
+enum class Mode {
+    Encode,
+    Decode,
+    GenSounds,
+#ifdef PUPLANG_EMBED_LICENSES
+    Licenses,
+#endif
+    Help
+};
 
 struct CliOptions {
     Mode mode = Mode::Help;
@@ -23,6 +36,9 @@ struct CliOptions {
     std::string output = "";
     std::string settings = "settings.txt";
     EncodeOptions enc_opts;
+#ifdef PUPLANG_EMBED_LICENSES
+    std::string license_target = "";
+#endif
 };
 
 namespace {
@@ -40,7 +56,7 @@ auto join_input(const std::vector<std::string> &parts) -> std::string {
     return out;
 }
 
-void add_common_args(argparse::ArgumentParser &parser, CliOptions &opts) {
+void add_common_args(argparse::ArgumentParser &parser) {
     parser.add_argument("input")
         .help("Raw text to process (default: stdin, use '-')")
         .default_value(std::vector<std::string>{})
@@ -67,74 +83,88 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
     program.add_description(
         "Encode text to puplang or decode puplang back to text.");
 
-    argparse::ArgumentParser encode_parser(
+    argparse::ArgumentParser encode_command(
         "encode", "1.0", argparse::default_arguments::help);
-    argparse::ArgumentParser decode_parser(
+    argparse::ArgumentParser decode_command(
         "decode", "1.0", argparse::default_arguments::help);
-    argparse::ArgumentParser sounds_parser(
+    argparse::ArgumentParser sounds_command(
         "sounds", "1.0", argparse::default_arguments::help);
 
-    CliOptions enc_opts;
-    CliOptions dec_opts;
+    add_common_args(encode_command);
+    add_common_args(decode_command);
 
-    add_common_args(encode_parser, enc_opts);
-    add_common_args(decode_parser, dec_opts);
-
-    sounds_parser.add_argument("-s", "--settings")
+    sounds_command.add_argument("-s", "--settings")
         .help("Settings file (default: built-in)")
         .default_value(std::string(""));
-    sounds_parser.add_argument("-o", "--output")
+    sounds_command.add_argument("-o", "--output")
         .help("Output file (default: stdout)")
         .default_value(std::string(""));
 
-    encode_parser.add_argument("--seed")
+    encode_command.add_argument("--seed")
         .help("RNG seed for encoding (default: 64)")
         .default_value((uint64_t)64)
         .scan<'u', uint64_t>();
-    encode_parser.add_argument("--free-extension-limit")
+    encode_command.add_argument("--free-extension-limit")
         .help("Extra letters counted as a penalty-less change (default: 0)")
         .default_value(0u)
         .scan<'u', uint>();
-    encode_parser.add_argument("--max-short-extension")
+    encode_command.add_argument("--max-short-extension")
         .help("Extra letters that don't count as a howl. Past these, the "
               "chance gets very unlikely, and impossible if howls are "
               "disabled. (default: 2)")
         .default_value(2u)
         .scan<'u', uint>();
-    encode_parser.add_argument("--length-decay-rate")
+    encode_command.add_argument("--length-decay-rate")
         .help("Past the free extension limit, the chance of each extra letter "
               "gets decreased exponentially by this value."
               "(default: 0.4)")
         .default_value(0.4)
         .scan<'g', double>();
-    encode_parser.add_argument("--uppercase-weight")
+    encode_command.add_argument("--uppercase-weight")
         .help("Weight of uppercase letters. Less is less common. Titled words "
               "are only affected by half of this value. (default: 1.0)")
         .default_value(1.0)
         .scan<'g', double>();
 
-    encode_parser.add_argument("--howl-enabled")
+    encode_command.add_argument("--howl-enabled")
         .help("Enable howls. A howl is a sound past the free extension limit "
               "thats made less uncommon. (default: true)")
         .default_value(true)
         .implicit_value(true);
 
-    encode_parser.add_argument("--initial-howl-chance")
+    encode_command.add_argument("--initial-howl-chance")
         .help("Initial howl probability 0-1 (default: 0.2)")
         .default_value(0.2)
         .scan<'g', double>();
-    encode_parser.add_argument("--howl-decay")
+    encode_command.add_argument("--howl-decay")
         .help("Howl chance decay multiplier after each howl (default: 0.5)")
         .default_value(0.5)
         .scan<'g', double>();
-    encode_parser.add_argument("--min-howl")
+    encode_command.add_argument("--min-howl")
         .help("Floor for howl chance (default: 0.1)")
         .default_value(0.1)
         .scan<'g', double>();
 
-    program.add_subparser(encode_parser);
-    program.add_subparser(decode_parser);
-    program.add_subparser(sounds_parser);
+    program.add_subparser(encode_command);
+    program.add_subparser(decode_command);
+    program.add_subparser(sounds_command);
+
+#ifdef PUPLANG_EMBED_LICENSES
+    argparse::ArgumentParser licenses_command(
+        "licenses", "1.0", argparse::default_arguments::help);
+
+    std::vector<std::unique_ptr<argparse::ArgumentParser>> license_subparsers;
+    license_subparsers.reserve(licenses::all_licenses.size());
+
+    for (const auto &lic : licenses::all_licenses) {
+        auto sub = std::make_unique<argparse::ArgumentParser>(
+            std::string(lic.id), "1.0", argparse::default_arguments::help);
+        licenses_command.add_subparser(*sub);
+        license_subparsers.push_back(std::move(sub));
+    }
+
+    program.add_subparser(licenses_command);
+#endif
 
     try {
         program.parse_args(argc, argv);
@@ -145,7 +175,8 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
 
     if (!program.is_subcommand_used("encode") &&
         !program.is_subcommand_used("decode") &&
-        !program.is_subcommand_used("sounds")) {
+        !program.is_subcommand_used("sounds") &&
+        !program.is_subcommand_used("licenses")) {
         // No subcommand given: show help and exit.
         std::cout << program;
         return CliOptions{}; // mode defaults to Help
@@ -154,30 +185,46 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
     argparse::ArgumentParser *used;
     CliOptions opts;
     if (program.is_subcommand_used("encode")) {
-        used = &encode_parser;
+        used = &encode_command;
         opts.mode = Mode::Encode;
-        opts.enc_opts.seed = encode_parser.get<uint64_t>("--seed");
+        opts.enc_opts.seed = encode_command.get<uint64_t>("--seed");
         opts.enc_opts.free_extension_limit =
-            encode_parser.get<uint>("--free-extension-limit");
+            encode_command.get<uint>("--free-extension-limit");
         opts.enc_opts.max_short_extension =
-            encode_parser.get<uint>("--max-short-extension");
+            encode_command.get<uint>("--max-short-extension");
         opts.enc_opts.length_decay_rate =
-            encode_parser.get<double>("--length-decay-rate");
+            encode_command.get<double>("--length-decay-rate");
         opts.enc_opts.uppercase_weight =
-            encode_parser.get<double>("--uppercase-weight");
-        opts.enc_opts.howl_enabled = encode_parser.get<bool>("--howl-enabled");
+            encode_command.get<double>("--uppercase-weight");
+        opts.enc_opts.howl_enabled = encode_command.get<bool>("--howl-enabled");
         opts.enc_opts.initial_howl_chance =
-            encode_parser.get<double>("--initial-howl-chance");
-        opts.enc_opts.howl_decay = encode_parser.get<double>("--howl-decay");
-        opts.enc_opts.min_howl = encode_parser.get<double>("--min-howl");
+            encode_command.get<double>("--initial-howl-chance");
+        opts.enc_opts.howl_decay = encode_command.get<double>("--howl-decay");
+        opts.enc_opts.min_howl = encode_command.get<double>("--min-howl");
     } else if (program.is_subcommand_used("sounds")) {
-        used = &sounds_parser;
+        used = &sounds_command;
         opts.mode = Mode::GenSounds;
-        opts.output = sounds_parser.get<std::string>("--output");
-        opts.settings = sounds_parser.get<std::string>("--settings");
+        opts.output = sounds_command.get<std::string>("--output");
+        opts.settings = sounds_command.get<std::string>("--settings");
         return opts;
-    } else {
-        used = &decode_parser;
+    }
+#ifdef PUPLANG_EMBED_LICENSES
+    else if (program.is_subcommand_used("licenses")) {
+        opts.mode = Mode::Licenses;
+        opts.settings = "";
+        opts.license_target = "";
+
+        for (const auto &lic : licenses::all_licenses) {
+            if (licenses_command.is_subcommand_used(std::string(lic.id))) {
+                opts.license_target = lic.id;
+                break;
+            }
+        }
+        return opts;
+    }
+#endif
+    else {
+        used = &decode_command;
         opts.mode = Mode::Decode;
     }
 
@@ -218,6 +265,13 @@ int main(int argc, char *argv[]) {
     }
     const Settings &cfg =
         loaded_settings ? *loaded_settings : puplang::default_settings;
+
+#ifdef PUPLANG_EMBED_LICENSES
+    if (opts->mode == Mode::Licenses) {
+        licenses::print_license(std::cout, opts->license_target);
+        return 0;
+    }
+#endif
 
     if (opts->mode == Mode::GenSounds) {
         if (!opts->output.empty() && opts->output != "-") {

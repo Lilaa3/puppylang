@@ -37,7 +37,12 @@ ${body}
     <a class="back" href="index.html"><-- back to the woofs</a>
   </main>
 
-  <footer>🐾 © 2026 Lilaa3</footer>
+  <footer>
+    🐾 © 2026 Lilaa3
+    <div class="footer-links">
+      <a href="licenses.html"><img src="license.svg" alt="" class="license-link-icon">licenses</a>
+    </div>
+  </footer>
 </body>
 
 </html>
