@@ -14,7 +14,7 @@
 
 #include "puplang.hpp"
 
-enum class Mode { Encode, Decode, Help };
+enum class Mode { Encode, Decode, GenSounds, Help };
 
 struct CliOptions {
     Mode mode = Mode::Help;
@@ -62,18 +62,30 @@ void add_common_args(argparse::ArgumentParser &parser, CliOptions &opts) {
 } // namespace
 
 std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
-    argparse::ArgumentParser program("puplang-cli");
+    argparse::ArgumentParser program(
+        "puplang-cli", "1.0", argparse::default_arguments::help);
     program.add_description(
         "Encode text to puplang or decode puplang back to text.");
 
-    argparse::ArgumentParser encode_parser("encode");
-    argparse::ArgumentParser decode_parser("decode");
+    argparse::ArgumentParser encode_parser(
+        "encode", "1.0", argparse::default_arguments::help);
+    argparse::ArgumentParser decode_parser(
+        "decode", "1.0", argparse::default_arguments::help);
+    argparse::ArgumentParser sounds_parser(
+        "sounds", "1.0", argparse::default_arguments::help);
 
     CliOptions enc_opts;
     CliOptions dec_opts;
 
     add_common_args(encode_parser, enc_opts);
     add_common_args(decode_parser, dec_opts);
+
+    sounds_parser.add_argument("-s", "--settings")
+        .help("Settings file (default: built-in)")
+        .default_value(std::string(""));
+    sounds_parser.add_argument("-o", "--output")
+        .help("Output file (default: stdout)")
+        .default_value(std::string(""));
 
     encode_parser.add_argument("--seed")
         .help("RNG seed for encoding (default: 64)")
@@ -122,6 +134,7 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
 
     program.add_subparser(encode_parser);
     program.add_subparser(decode_parser);
+    program.add_subparser(sounds_parser);
 
     try {
         program.parse_args(argc, argv);
@@ -131,7 +144,8 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
     }
 
     if (!program.is_subcommand_used("encode") &&
-        !program.is_subcommand_used("decode")) {
+        !program.is_subcommand_used("decode") &&
+        !program.is_subcommand_used("sounds")) {
         // No subcommand given: show help and exit.
         std::cout << program;
         return CliOptions{}; // mode defaults to Help
@@ -156,6 +170,12 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
             encode_parser.get<double>("--initial-howl-chance");
         opts.enc_opts.howl_decay = encode_parser.get<double>("--howl-decay");
         opts.enc_opts.min_howl = encode_parser.get<double>("--min-howl");
+    } else if (program.is_subcommand_used("sounds")) {
+        used = &sounds_parser;
+        opts.mode = Mode::GenSounds;
+        opts.output = sounds_parser.get<std::string>("--output");
+        opts.settings = sounds_parser.get<std::string>("--settings");
+        return opts;
     } else {
         used = &decode_parser;
         opts.mode = Mode::Decode;
@@ -198,6 +218,23 @@ int main(int argc, char *argv[]) {
     }
     const Settings &cfg =
         loaded_settings ? *loaded_settings : puplang::default_settings;
+
+    if (opts->mode == Mode::GenSounds) {
+        if (!opts->output.empty() && opts->output != "-") {
+            std::ofstream out_file;
+            out_file.open(opts->output);
+            if (!out_file) {
+                std::println(
+                    stderr, "i/o error: cannot open '{}'", opts->output);
+                return 1;
+            }
+            out_file << puplang::generate_sound_table(cfg);
+            out_file.close();
+        } else {
+            std::cout << puplang::generate_sound_table(cfg);
+        }
+        return 0;
+    }
 
     // Resolve the output sink
     std::string output_path = opts->output;

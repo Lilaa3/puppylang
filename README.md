@@ -47,10 +47,21 @@ Uhm... Encrypt your messages like a terminally online trans woman. Or double enc
 
 Thats right the opposite of a dumb dog is one that speaks AND does your homework.
 
+## Wanna disect this dog's brain?
+
+You can dump the entire sound table straight from the CLI:
+
+```sh
+./puplang sounds -o sound_table.txt
+```
+
+It includes every word and its equivalent values and ascii c representation.
+You can also download it from releases/artifacts.
+
 ## Development status
 
 I'd really like to add stuff like.
-Binary mode: sounds funny
-More optimized bark mode, similar to purrcrypt?
-Compression?? Not out of the question?
-Versioning + a magic number.. Maybe.
+- Binary mode: sounds funny
+- ~~More optimized bark mode, similar to purrcrypt?~~
+- Compression?? Not out of the question?
+- Versioning + a magic number.. Maybe.

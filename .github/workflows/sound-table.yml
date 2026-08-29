@@ -1,0 +1,31 @@
+name: Sound Table
+
+on:
+  workflow_run:
+    workflows: [Release CLI]
+    types:
+      - completed
+
+jobs:
+  sound-table:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download CLI
+        uses: actions/download-artifact@v4
+        with:
+          name: puplang-cli
+          path: .
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Make executable
+        run: chmod +x puplang
+
+      - name: Generate sound table
+        run: ./puplang sounds -o sound_table.txt
+
+      - name: Upload sound table
+        uses: actions/upload-artifact@v4
+        with:
+          name: sound-table
+          path: sound_table.txt

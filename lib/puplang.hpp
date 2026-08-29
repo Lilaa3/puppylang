@@ -9,6 +9,7 @@
 
 #include "decode.hpp"
 #include "encode.hpp"
+#include "sound_table.hpp"
 #include "utility.hpp"
 
 namespace puplang {
@@ -76,6 +77,14 @@ inline auto decode(std::string_view text, const Settings &cfg)
 inline auto decode(std::string_view text, std::string_view settings)
     -> std::expected<std::string, PuplangError> {
     return ::decode(text, Settings::parse(settings));
+}
+
+inline auto generate_sound_table() -> std::string {
+    return ::generate_sound_table(default_settings);
+}
+
+inline auto generate_sound_table(const Settings &cfg) -> std::string {
+    return ::generate_sound_table(cfg);
 }
 
 namespace detail {

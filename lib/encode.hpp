@@ -5,7 +5,6 @@
 #include <cmath>
 #include <cstdint>
 #include <expected>
-#include <format>
 #include <fstream>
 #include <functional>
 #include <iterator>
