@@ -66,6 +66,11 @@ auto build_sound_table(const std::vector<WordInfo> &sounds)
     -> std::expected<std::array<std::vector<SoundEntry>, VALUE_MODULUS>,
                      PuplangError>;
 
+/// Binary (full-byte) variant.
+auto build_binary_sound_table(const std::vector<WordInfo> &sounds)
+    -> std::expected<std::array<std::vector<SoundEntry>, BINARY_VALUE_MODULUS>,
+                     PuplangError>;
+
 /// Picks a candidate word.
 ///
 /// Variations that differ by only a few letters (up to
@@ -77,6 +82,10 @@ auto pick_candidate_word(std::span<const SoundEntry> candidates,
                          EncodeState &state)
     -> std::expected<std::pair<std::string, bool>,
                      PuplangError>; // (word, is_howl)
+
+/// Picks a sound and dampens the howl chance.
+auto pick_sound(std::span<const SoundEntry> candidates, EncodeState &state)
+    -> std::expected<std::string, PuplangError>;
 
 auto encode_chunk(
     const SoundChunk &chunk,

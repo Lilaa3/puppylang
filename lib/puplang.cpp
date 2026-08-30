@@ -15,13 +15,15 @@ auto error_message(PuplangError e) -> std::string_view {
     case PuplangError::unknown_casing:
         return "unknown casing";
     case PuplangError::invalid_structure:
-        return "missing woof/yay framing";
+        return "invalid framing";
     case PuplangError::bark_collision:
         return "sound table collision";
     case PuplangError::invalid_utf8:
         return "invalid or truncated utf-8";
     case PuplangError::io_error:
         return "i/o error";
+    case PuplangError::unsupported_version:
+        return "unsupported puplang version";
     }
     return "unknown error";
 }

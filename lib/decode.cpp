@@ -37,17 +37,22 @@ auto parse_encoded_word(std::string_view token, const Settings &cfg)
              .mode_change = mode_change };
 }
 
+auto parse_framing_value(std::string_view token, const Settings &cfg)
+    -> std::expected<uint8_t, PuplangError> {
+    auto [lead, sound, trail, mode_change] = parse_encoded_word(token, cfg);
+    (void)lead;
+    (void)trail;
+    (void)mode_change;
+    auto val = get_sound_value(sound, cfg.sounds);
+    if (!val)
+        return std::unexpected(PuplangError::invalid_structure);
+    return static_cast<uint8_t>(*val % BINARY_VALUE_MODULUS);
+}
+
 auto decode_token(std::string_view token, const Settings &cfg,
                   DecodeState &state, std::ostream &out)
     -> std::expected<void, PuplangError> {
     auto [lead, sound, trail, mode_change] = parse_encoded_word(token, cfg);
-
-    if (!state.seen_header) {
-        if (token != cfg.header)
-            return std::unexpected(PuplangError::invalid_structure);
-        state.seen_header = true;
-        return {};
-    }
 
     out << lead;
 
@@ -57,7 +62,6 @@ auto decode_token(std::string_view token, const Settings &cfg,
     // Bare punctuation token, nothing to decode
     if (sound.empty()) {
         out << trail;
-        state.last_token = std::string(token);
         return {};
     }
 
@@ -78,7 +82,6 @@ auto decode_token(std::string_view token, const Settings &cfg,
     }
 
     out << trail;
-    state.last_token = std::string(token);
     return {};
 }
 
@@ -91,9 +94,25 @@ auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
     ProgressTracker tracker{ progress, in };
 
     // Read first token (header)
-    if (!(in >> token) || token != cfg.header)
+    if (!(in >> token))
         return std::unexpected(PuplangError::invalid_structure);
-    state.seen_header = true;
+
+    uint8_t header_byte = 0;
+    bool legacy = false;
+    auto header = parse_framing_value(token, cfg);
+    if (!header)
+        return std::unexpected(header.error());
+    header_byte = *header;
+    const auto version = header_byte & HEADER_MASK_VERSION;
+    // v0 is reserved for explicit woof/yay framing
+    if (version == 0) {
+        legacy = (token == cfg.header);
+        if (!legacy)
+            return std::unexpected(PuplangError::invalid_structure);
+    }
+    if (version > FORMAT_VERSION)
+        return std::unexpected(PuplangError::unsupported_version);
+
     tracker.report_fraction(std::streamoff(in.tellg()));
 
     // Read second token (first payload or footer if empty message)
@@ -111,8 +130,17 @@ auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
         tracker.report_fraction(std::streamoff(in.tellg()));
     }
 
-    if (next_token != cfg.footer) // next_token is now the footer
-        return std::unexpected(PuplangError::invalid_structure);
+    // next_token is now the footer.
+    // For v0 it must be the literal settings footer word (yay).
+    // For the new format it mirrors the header.
+    if (legacy) {
+        if (next_token != cfg.footer)
+            return std::unexpected(PuplangError::invalid_structure);
+    } else {
+        auto footer = parse_framing_value(next_token, cfg);
+        if (!footer || *footer != header_byte)
+            return std::unexpected(PuplangError::invalid_structure);
+    }
     // incomplete multibyte sequence at EOF.. oh.
     if (state.accumulated_chunks != 0)
         return std::unexpected(PuplangError::missformed);

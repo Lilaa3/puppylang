@@ -32,10 +32,12 @@ auto apply_casing(std::string word, Casing casing) -> std::string {
     return word;
 }
 
-auto build_sound_table(const std::vector<WordInfo> &sounds)
-    -> std::expected<std::array<std::vector<SoundEntry>, VALUE_MODULUS>,
+namespace {
+template <size_t Modulus>
+auto build_sound_table_impl(const std::vector<WordInfo> &sounds)
+    -> std::expected<std::array<std::vector<SoundEntry>, Modulus>,
                      PuplangError> {
-    std::array<std::vector<SoundEntry>, VALUE_MODULUS> table;
+    std::array<std::vector<SoundEntry>, Modulus> table;
 
     for (const auto &base : sounds) {
         int variations = run_combinations(base.runs);
@@ -46,7 +48,8 @@ auto build_sound_table(const std::vector<WordInfo> &sounds)
                 std::string word = apply_casing(base_word, casing);
                 // Only keep the word if the decoder can actually read it
                 if (auto val = get_sound_value(word, sounds); val) {
-                    table[*val].push_back({ std::move(word), casing });
+                    table[*val % Modulus].push_back(
+                        { std::move(word), casing });
                 } else {
                     return std::unexpected(PuplangError::bark_collision);
                 }
@@ -67,6 +70,19 @@ auto build_sound_table(const std::vector<WordInfo> &sounds)
         words.erase(first, last);
     }
     return table;
+}
+} // namespace
+
+auto build_sound_table(const std::vector<WordInfo> &sounds)
+    -> std::expected<std::array<std::vector<SoundEntry>, VALUE_MODULUS>,
+                     PuplangError> {
+    return build_sound_table_impl<VALUE_MODULUS>(sounds);
+}
+
+auto build_binary_sound_table(const std::vector<WordInfo> &sounds)
+    -> std::expected<std::array<std::vector<SoundEntry>, BINARY_VALUE_MODULUS>,
+                     PuplangError> {
+    return build_sound_table_impl<BINARY_VALUE_MODULUS>(sounds);
 }
 
 auto pick_candidate_word(std::span<const SoundEntry> candidates,
@@ -137,6 +153,17 @@ auto pick_candidate_word(std::span<const SoundEntry> candidates,
     return std::pair{ candidates[index].word, index > max_word_i };
 }
 
+auto pick_sound(std::span<const SoundEntry> candidates, EncodeState &state)
+    -> std::expected<std::string, PuplangError> {
+    auto sound_result = pick_candidate_word(candidates, state);
+    if (!sound_result)
+        return std::unexpected(sound_result.error());
+    auto [sound, is_howl] = sound_result.value();
+    if (is_howl)
+        state.howl_chance *= state.opts.howl_decay;
+    return sound;
+}
+
 auto encode_chunk(
     const SoundChunk &chunk,
     const std::array<std::vector<SoundEntry>, VALUE_MODULUS> &table,
@@ -146,13 +173,9 @@ auto encode_chunk(
 
     assert(!candidates.empty());
 
-    auto sound_result = pick_candidate_word(candidates, state);
-    if (!sound_result)
-        return std::unexpected(sound_result.error());
-    auto [sound, is_howl] = sound_result.value();
-    if (is_howl) {
-        state.howl_chance *= state.opts.howl_decay;
-    }
+    auto sound = pick_sound(candidates, state);
+    if (!sound)
+        return std::unexpected(sound.error());
 
     // Emit prefix switch only when the codepoint byte-width changes
     if (chunk.is_first_byte && chunk.mode != state.current_mode) {
@@ -160,7 +183,7 @@ auto encode_chunk(
         state.current_mode = chunk.mode;
     }
 
-    out << ' ' << chunk.lead_punct << sound << chunk.trail_punct;
+    out << ' ' << chunk.lead_punct << *sound << chunk.trail_punct;
     state.any_chunk_emitted = true;
 
     return {};
@@ -187,8 +210,20 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
 
     EncodeState state(opts.seed, opts);
 
-    out << cfg.header;
+    // Framing is emitted through the binary mode
+    auto binary_tablex = build_binary_sound_table(cfg.sounds);
+    if (!binary_tablex)
+        return std::unexpected(binary_tablex.error());
 
+    const auto header_byte = FORMAT_VERSION & HEADER_MASK_VERSION;
+
+    // Header
+    auto header_sound = pick_sound((*binary_tablex)[header_byte], state);
+    if (!header_sound)
+        return std::unexpected(header_sound.error());
+    out << *header_sound;
+
+    // Begin main loop
     ProgressTracker tracker{ progress, in };
 
     std::string pending_lead;  // punctuation before the next sound
@@ -257,7 +292,11 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
     if (!state.any_chunk_emitted && !pending_lead.empty())
         out << ' ' << pending_lead;
 
-    out << ' ' << cfg.footer;
+    // Footer mirrors the first header byte
+    auto footer_sound = pick_sound((*binary_tablex)[header_byte], state);
+    if (!footer_sound)
+        return std::unexpected(footer_sound.error());
+    out << ' ' << *footer_sound;
     return {};
 }
 

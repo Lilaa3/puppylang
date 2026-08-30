@@ -92,4 +92,4 @@ I'd really like to add stuff like.
 - Binary mode: sounds funny
 - ~~More optimized bark mode, similar to purrcrypt?~~
 - Compression?? Not out of the question?
-- Versioning + a magic number.. Maybe.
+- ~~Versioning + a magic number.. Maybe.~~

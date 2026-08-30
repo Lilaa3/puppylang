@@ -1,9 +1,8 @@
 # Puplang Mechanisms
 
-## WHY DOES IT ALWAYS START WITH `woof` AND END WITH `yay`
+## Wait how does the decoder recognize its puplang?
 
-Well first off,, why are you yelling?</br>
-Second of all, woof, in this format, is equivelent to a 0, so I think it's the best way to start the format. It ends with a yay because the puppy is happy! Also uhm because it is distinguishable or something.
+The first sound is encoded as a full length byte, the first 4 bytes dictate version number, in legacy versions that would mean 0 aka "woof", we check specifically for woof and yay as header and footer in that case. To further prevent errors in newer versions the start and end must match in internal full-byte value.
 
 ## Wait.. woof is 0? Uh..?
 
@@ -43,9 +42,9 @@ For unicode, we use:
 
 Using those prefixes puts us into multi-bark mode, or multi-byte or whatever.<br> 
 For example, here is the 🐕:<br> 
-`woof Rrr-woof Arf BAAF Huuf yay`
+`baaff Rrr- woof Arf BAAF grrf Woof`
 
-<sup>remove one `u` to get a friendly turtle!</sup>
+<sup>capitalize the g to get a friendly oink!</sup>
 
 Unlike in UTF-8, we don't store length in the bark itself, we use the prefix for some added cute flare. We COULD 100% store it in the bark, but I like this more.
 

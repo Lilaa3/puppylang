@@ -100,8 +100,7 @@ auto get_sound_value(std::string_view input,
             if (!var_idx)
                 return std::unexpected(var_idx.error());
             if (var_idx->has_value()) {
-                return calc_sound_value(base, **var_idx, *casing) %
-                       VALUE_MODULUS;
+                return calc_sound_value(base, **var_idx, *casing);
             }
         }
     }

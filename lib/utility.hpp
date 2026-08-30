@@ -20,13 +20,24 @@ enum class PuplangError {
     invalid_structure,
     bark_collision,
     invalid_utf8,
-    io_error
+    io_error,
+    unsupported_version
 };
 
 constexpr auto CASING_MULTIPLIER = static_cast<int>(Casing::Step);
+// Utf-8 mode
 constexpr auto BITS_PER_SOUND = 7;
 constexpr uint32_t VALUE_MODULUS = 1u << BITS_PER_SOUND;
 constexpr uint32_t SOUND_MASK = VALUE_MODULUS - 1;
+// Binary (full-byte) mode
+constexpr auto BINARY_BITS_PER_SOUND = 8;
+constexpr uint32_t BINARY_VALUE_MODULUS = 1u << BINARY_BITS_PER_SOUND;
+
+// Format header byte layout
+constexpr uint8_t FORMAT_VERSION = 1;
+constexpr uint8_t HEADER_MASK_VERSION = (1u << 5) - 1; // bits 0-4
+constexpr uint8_t HEADER_MASK_BINARY = 1u << 5;        // bit 5
+constexpr uint8_t HEADER_MASK_RESERVED = 3u << 6;      // bits 6-7
 
 class ProgressTracker {
     std::function<void(double)> sink;
@@ -104,7 +115,7 @@ auto match_pattern_variation(const std::vector<Run> &in_runs,
 auto calc_sound_value(const WordInfo &base, int var_index, Casing casing)
     -> uint32_t;
 
-// Identifies the matching archetype and derives the wrapped 7-bit value.
+// Identifies the matching sound and returns its unwrapped value.
 auto get_sound_value(std::string_view input,
                      const std::vector<WordInfo> &sounds)
     -> std::expected<uint32_t, PuplangError>;

@@ -49,8 +49,6 @@ struct DecodeState {
     CodePointMode current_mode = CodePointMode::ASCII;
     uint32_t current_cp = 0;
     uint8_t accumulated_chunks = 0;
-    bool seen_header = false;
-    std::string last_token; // For footer verification at EOF
 };
 
 /// Processes a single token, appending decoded output to `out`.

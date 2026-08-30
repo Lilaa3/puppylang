@@ -180,7 +180,7 @@ button:active {
 }
 
 .error-message {
-  width: 100%;
+  width: 80%;
   margin: 0.5rem auto 1rem;
   padding: 0.5rem 2rem;
   background: #e13030;
