@@ -7,10 +7,27 @@ You might also be asking, how does it work! Well imagine like a discord puppygir
 
 <sup>why would you ask me [to do that](MECHANISMS.md).,.</sup>
 
-## Thirdparty (CLI/Lib)
+## Thirdparty
 
-- argparse — MIT License, © 2018 Pranav Srinivas Kumar <pranav.srinivas.kumar@gmail.com> — https://github.com/p-ranav/argparse
-- utf8-cpp — Boost Software License 1.0, © Nemanja Trifunovic — https://github.com/nemtrif/utfcpp
+### CLI / Lib
+
+| Library | License | Copyright |
+| --- | --- | --- |
+| [argparse](https://github.com/p-ranav/argparse) | [MIT License](thirdparty/argparse/LICENSE) | [© 2018 Pranav Srinivas Kumar](https://github.com/p-ranav) |
+| [utfcpp](https://github.com/nemtrif/utfcpp) | [Boost Software License 1.0](thirdparty/utfcpp/LICENSE) | [© Nemanja Trifunovic](https://github.com/nemtrif) |
+
+### Web
+
+| Asset | License | Copyright |
+| --- | --- | --- |
+| [Emscripten](https://github.com/emscripten-core/emscripten) | [MIT / UIUC NCSA](web/licenses/emscripten-LICENSE.txt) | [© 2010–2014 Emscripten authors](https://github.com/emscripten-core) |
+| [Flowbite Icons](https://github.com/themesberg/flowbite-icons) | [MIT License](web/licenses/flowbite-LICENSE.txt) | [© 2024 Themesberg](https://github.com/themesberg) |
+| [css.gg](https://css.gg/) | [Creative Commons BY-NC-ND*](web/licenses/css-gg-LICENSE.md) | [© 2024 CSS＊GG & GLYF＊APP](https://github.com/astrit) |
+| [Wolf icon (Noun Project)](https://thenounproject.com/icon/wolf-howling-521733/) | [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/) | [© 2016 ProSymbols](https://thenounproject.com/creator/prosymbols/) |
+| [Luckiest Guy](https://fonts.google.com/specimen/Luckiest+Guy) | [SIL Open Font License 1.1](web/licenses/luckiest_guy-LICENSE.txt) | [© 2011 Astigmatic](https://web.archive.org/web/20191118143728/http://www.astigmatic.com/) |
+| [Gorditas](https://fonts.google.com/specimen/Gorditas) | [SIL Open Font License 1.1](web/licenses/Gorditas-OFL.txt) | [© 2011 Gustavo Dipre](https://luc.devroye.org/fonts-62486.html) |
+
+\* CSS.GG has a custom license similar to Creative Commons BY-NC-ND, but explicitly bans making derivative works or replicating its functionality.
 
 ## License
 
