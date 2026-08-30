@@ -4,10 +4,11 @@ project(puplang VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(puplang INTERFACE)
+file(GLOB PUPLANG_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
-target_include_directories(puplang INTERFACE
+add_library(puplang STATIC ${PUPLANG_SOURCES})
+
+target_include_directories(puplang PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/thirdparty/utf8/source)
-
-target_compile_features(puplang INTERFACE cxx_std_26)
