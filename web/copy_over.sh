@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 rm -rf web/dist/html
 mkdir -p web/dist/html
 
-cp web/content/* web/dist/html
+cp -r web/content/* web/dist/html
 mkdir -p web/dist/html/licenses
 cp -r web/licenses/* web/dist/html/licenses
 cp LICENSE web/dist/html/licenses/puplang-LICENSE.txt

@@ -12,7 +12,7 @@
 
 body {
   margin: 0;
-  background: url("interior--dog00--00.webp") center / auto 100% fixed;
+  background: url("images/background.webp") center / auto 100% fixed;
   font-family: "Gorditas", cursive;
   color: rgb(206, 234, 192);
   text-shadow: 1px 3px 1px var(--dark);
@@ -309,7 +309,7 @@ textarea.error {
 }
 
 .copy.pressed img {
-  content: url("check-r.svg");
+  content: url("icons/check-r.svg");
 }
 
 .settings-panel {
@@ -558,7 +558,7 @@ main.licenses h3::before {
   height: 20px;
   margin-right: .4rem;
   vertical-align: -3px;
-  background: url("license.svg") no-repeat center / contain;
+  background: url("icons/license.svg") no-repeat center / contain;
   filter: var(--svg-color);
 }
 

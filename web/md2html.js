@@ -29,7 +29,7 @@ const html = `<!doctype html>
 <main class="mechanisms">
     <a class="repo" href="https://github.com/Lilaa3/puppylang" title="puplang on GitHub">
       <span>View on github</span>
-      <img src="Octicons-mark-github.svg" alt="" class="svg-color">
+      <img src="icons/Octicons-mark-github.svg" alt="" class="svg-color">
     </a>
     <article>
 ${body}
@@ -40,7 +40,7 @@ ${body}
   <footer>
     🐾 © 2026 Lilaa3
     <div class="footer-links">
-      <a href="licenses.html"><img src="license.svg" alt="" class="license-link-icon">licenses</a>
+      <a href="licenses.html"><img src="icons/license.svg" alt="" class="license-link-icon">licenses</a>
     </div>
   </footer>
 </body>
