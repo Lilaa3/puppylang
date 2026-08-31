@@ -18,6 +18,7 @@ struct SoundChunk {
     uint8_t value;      // 7-bit value
     CodePointMode mode; // UTF-8 byte width (1 to 4)
     bool is_first_byte; // True if this chunk starts a new codepoint
+    bool join = false;  // Suppress the leading separator space
     std::string lead_punct;
     std::string trail_punct;
 };

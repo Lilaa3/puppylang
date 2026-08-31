@@ -177,13 +177,16 @@ auto encode_chunk(
     if (!sound)
         return std::unexpected(sound.error());
 
-    // Emit prefix switch only when the codepoint byte-width changes
+    // Emit the sound as a single token with one leading separator (unless this
+    // chunk is joined to punctuation that directly preceded it).
+    if (!chunk.join)
+        out << ' ';
     if (chunk.is_first_byte && chunk.mode != state.current_mode) {
-        out << ' ' << cfg.prefixes[chunk.mode];
+        out << cfg.prefixes[chunk.mode];
         state.current_mode = chunk.mode;
     }
 
-    out << ' ' << chunk.lead_punct << *sound << chunk.trail_punct;
+    out << chunk.lead_punct << *sound << chunk.trail_punct;
     state.any_chunk_emitted = true;
 
     return {};
@@ -230,20 +233,33 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
     std::string pending_trail; // punctuation after the previous sound
     bool sound_since_punct = false;
 
+    bool last_sound_was_ws = false;
+    auto is_ws = [](uint32_t c) { // Whether a codepoint is whitespace
+        return c <= 0x7F && std::isspace(static_cast<unsigned char>(c)) != 0;
+    };
+
+    auto flush_punct = [&]() {
+        if (!pending_trail.empty()) {
+            if (last_sound_was_ws)
+                out << ' ';
+            out << pending_trail;
+            pending_trail.clear();
+        }
+    };
+
     auto emit_codepoint = [&](uint32_t cp,
                               int bytes) -> std::expected<void, PuplangError> {
         // Trailing punctuation belongs after the previous sound, so it is
         // flushed right before the following sound starts.
-        if (!pending_trail.empty()) {
-            out << pending_trail;
-            pending_trail.clear();
-        }
+        bool had_trail = !pending_trail.empty();
+        flush_punct();
         for (int b = 0; b < bytes; ++b) {
             int shift = BITS_PER_SOUND * (bytes - 1 - b);
             SoundChunk chunk{
                 .value = static_cast<uint8_t>((cp >> shift) & SOUND_MASK),
                 .mode = static_cast<CodePointMode>(bytes),
                 .is_first_byte = (b == 0),
+                .join = (b == 0) && had_trail && !is_ws(cp),
                 .lead_punct = (b == 0) ? std::move(pending_lead) : "",
                 .trail_punct = ""
             };
@@ -254,6 +270,7 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
                 return std::unexpected(result.error());
         }
         sound_since_punct = true;
+        last_sound_was_ws = is_ws(cp);
         return {};
     };
 
@@ -287,8 +304,7 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
     tracker.report(1.0);
 
     // Flush any trailing punctuation left after the final sound.
-    if (!pending_trail.empty())
-        out << pending_trail;
+    flush_punct();
     if (!state.any_chunk_emitted && !pending_lead.empty())
         out << ' ' << pending_lead;
 

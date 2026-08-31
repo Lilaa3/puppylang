@@ -2,86 +2,151 @@
 
 #include <ostream>
 #include <sstream>
+#include <vector>
 
-auto split_punctuation(std::string_view token) -> TokenParts {
-    size_t start = 0;
-    while (start < token.size() && is_punct(token[start]))
-        start++;
+enum class TokenSegKind { Punct, Mode, Sound };
 
-    size_t end = token.size();
-    while (end > start && is_punct(token[end - 1]))
-        end--;
+struct TokenSeg {
+    TokenSegKind kind;
+    std::string text;
+    int mode = 0;
+};
 
-    return { .lead = token.substr(0, start),
-             .body = token.substr(start, end - start),
-             .trail = token.substr(end) };
-}
+struct PrefixMatch {
+    int mode;
+    std::string_view prefix;
+};
 
-auto parse_encoded_word(std::string_view token, const Settings &cfg)
-    -> ParsedWord {
-    auto [lead, body, trail] = split_punctuation(token);
-    int mode_change = 0;
+// Checks if the beginning of a string matches any defined mode prefix.
+static std::optional<PrefixMatch> match_prefix(std::string_view s,
+                                               const Settings &cfg) {
+    if (cfg.prefixes.size() <= 1) {
+        return std::nullopt;
+    }
 
-    // Check for mode prefixes while preserving the casing of the sound itself
-    for (int m = 1; m <= 4; ++m) {
-        if (!cfg.prefixes[m].empty() && body.starts_with(cfg.prefixes[m])) {
-            mode_change = m;
-            body.remove_prefix(cfg.prefixes[m].size());
-            break;
+    auto begin = cfg.prefixes.begin() + 1;
+    auto count = std::min<size_t>(4, cfg.prefixes.size() - 1);
+    auto end = begin + count;
+
+    // Check each prefix to see if the string starts with it
+    int index = 1;
+    for (auto it = begin; it != end; ++it, ++index) {
+        const auto &p = *it;
+        if (!p.empty() && s.starts_with(p)) {
+            return PrefixMatch{ index, p };
         }
     }
 
-    return { .lead_punct = lead,
-             .sound = body,
-             .trail_punct = trail,
-             .mode_change = mode_change };
+    return std::nullopt;
 }
 
-auto parse_framing_value(std::string_view token, const Settings &cfg)
+// Splits a single section into a sequence of punctuation, mode prefix, and
+// sound parts.
+static auto tokenize_section(std::string_view section, const Settings &cfg)
+    -> std::expected<std::vector<TokenSeg>, PuplangError> {
+    std::vector<TokenSeg> out;
+
+    while (!section.empty()) {
+        // Prefix Match
+        if (auto match = match_prefix(section, cfg)) {
+            out.push_back({ .kind = TokenSegKind::Mode,
+                            .text = std::string(match->prefix),
+                            .mode = match->mode });
+            section.remove_prefix(match->prefix.size());
+            continue;
+        }
+        // Punctuation
+        if (is_punct(section.front())) {
+            out.push_back({ .kind = TokenSegKind::Punct,
+                            .text = std::string(1, section.front()) });
+            section.remove_prefix(1);
+            continue;
+        }
+
+        // Sound Segment
+        // Look ahead for the next boundary (either punctuation or a new prefix)
+        size_t len = 0;
+        while (len < section.size()) {
+            auto remaining = section.substr(len);
+            if (is_punct(remaining.front()) || match_prefix(remaining, cfg)) {
+                break;
+            }
+            ++len;
+        }
+
+        if (len == 0)
+            return std::unexpected(PuplangError::invalid_structure);
+
+        out.push_back({ .kind = TokenSegKind::Sound,
+                        .text = std::string(section.substr(0, len)) });
+        section.remove_prefix(len);
+    }
+
+    return out;
+}
+
+// Parses only one token from a section
+auto parse_framing_value(std::string_view section, const Settings &cfg)
     -> std::expected<uint8_t, PuplangError> {
-    auto [lead, sound, trail, mode_change] = parse_encoded_word(token, cfg);
-    (void)lead;
-    (void)trail;
-    (void)mode_change;
-    auto val = get_sound_value(sound, cfg.sounds);
-    if (!val)
-        return std::unexpected(PuplangError::invalid_structure);
-    return static_cast<uint8_t>(*val % BINARY_VALUE_MODULUS);
+    auto segs = tokenize_section(section, cfg);
+    if (!segs)
+        return std::unexpected(segs.error());
+
+    std::optional<std::string_view> sound_text;
+    for (const auto &seg : *segs) {
+        if (seg.kind == TokenSegKind::Sound) {
+            if (sound_text
+                    .has_value()) { // More than one sound segment is invalid
+                return std::unexpected(PuplangError::invalid_structure);
+            }
+            sound_text = seg.text;
+            auto val = get_sound_value(*sound_text, cfg.sounds);
+            if (!val)
+                return std::unexpected(PuplangError::invalid_structure);
+            return static_cast<uint8_t>(*val % BINARY_VALUE_MODULUS);
+        } else { // Framing tokens shouldn't switch modes or have any
+                 // punctuation
+            return std::unexpected(PuplangError::invalid_structure);
+        }
+    }
+    // Token contained no sound segment
+    return std::unexpected(PuplangError::invalid_structure);
 }
 
-auto decode_token(std::string_view token, const Settings &cfg,
-                  DecodeState &state, std::ostream &out)
+auto decode_tokens(std::string_view section, const Settings &cfg,
+                   DecodeState &state, std::ostream &out)
     -> std::expected<void, PuplangError> {
-    auto [lead, sound, trail, mode_change] = parse_encoded_word(token, cfg);
+    auto segsx = tokenize_section(section, cfg);
+    if (!segsx)
+        return std::unexpected(segsx.error());
+    auto segs = segsx.value();
 
-    out << lead;
-
-    if (mode_change != 0)
-        state.current_mode = static_cast<CodePointMode>(mode_change);
-
-    // Bare punctuation token, nothing to decode
-    if (sound.empty()) {
-        out << trail;
-        return {};
+    for (const auto &seg : segs) {
+        switch (seg.kind) {
+        case TokenSegKind::Punct:
+            out << seg.text;
+            break;
+        case TokenSegKind::Mode:
+            state.current_mode = static_cast<CodePointMode>(seg.mode);
+            break;
+        case TokenSegKind::Sound: {
+            auto sound_val = get_sound_value(seg.text, cfg.sounds);
+            if (!sound_val)
+                return std::unexpected(sound_val.error());
+            state.current_cp = (state.current_cp << BITS_PER_SOUND) |
+                               (static_cast<uint32_t>(*sound_val) & SOUND_MASK);
+            state.accumulated_chunks++;
+            // Once the required number of chunks for the current mode are
+            // buffered, emit the codepoint
+            if (state.accumulated_chunks == state.current_mode) {
+                append_utf8(out, state.current_cp);
+                state.current_cp = 0;
+                state.accumulated_chunks = 0;
+            }
+            break;
+        }
+        }
     }
-
-    auto sound_val = get_sound_value(sound, cfg.sounds);
-    if (!sound_val)
-        return std::unexpected(sound_val.error());
-
-    state.current_cp = (state.current_cp << BITS_PER_SOUND) |
-                       (static_cast<uint32_t>(*sound_val) & SOUND_MASK);
-    state.accumulated_chunks++;
-
-    // Once the required number of chunks for the current mode are buffered,
-    // emit the codepoint
-    if (state.accumulated_chunks == state.current_mode) {
-        append_utf8(out, state.current_cp);
-        state.current_cp = 0;
-        state.accumulated_chunks = 0;
-    }
-
-    out << trail;
     return {};
 }
 
@@ -89,24 +154,24 @@ auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
                    std::function<void(double)> progress)
     -> std::expected<void, PuplangError> {
     DecodeState state;
-    std::string token;
+    std::string section;
 
     ProgressTracker tracker{ progress, in };
 
-    // Read first token (header)
-    if (!(in >> token))
+    // Read first section (header)
+    if (!(in >> section))
         return std::unexpected(PuplangError::invalid_structure);
 
     uint8_t header_byte = 0;
     bool legacy = false;
-    auto header = parse_framing_value(token, cfg);
+    auto header = parse_framing_value(section, cfg);
     if (!header)
         return std::unexpected(header.error());
     header_byte = *header;
     const auto version = header_byte & HEADER_MASK_VERSION;
     // v0 is reserved for explicit woof/yay framing
     if (version == 0) {
-        legacy = (token == cfg.header);
+        legacy = (section == cfg.header);
         if (!legacy)
             return std::unexpected(PuplangError::invalid_structure);
     }
@@ -115,29 +180,29 @@ auto decode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
 
     tracker.report_fraction(std::streamoff(in.tellg()));
 
-    // Read second token (first payload or footer if empty message)
-    std::string next_token;
-    if (!(in >> next_token))
+    // Read second section (first payload or footer if empty message)
+    std::string next_section;
+    if (!(in >> next_section))
         return std::unexpected(PuplangError::invalid_structure);
     tracker.report_fraction(std::streamoff(in.tellg()));
 
-    // Process tokens with one-token lookahead
-    while (in >> token) {
-        auto result = decode_token(next_token, cfg, state, out);
+    // Process sections with lookahead
+    while (in >> section) {
+        auto result = decode_tokens(next_section, cfg, state, out);
         if (!result)
             return result;
-        next_token = std::move(token);
+        next_section = std::move(section);
         tracker.report_fraction(std::streamoff(in.tellg()));
     }
 
-    // next_token is now the footer.
+    // next_section is now the footer.
     // For v0 it must be the literal settings footer word (yay).
     // For the new format it mirrors the header.
     if (legacy) {
-        if (next_token != cfg.footer)
+        if (next_section != cfg.footer)
             return std::unexpected(PuplangError::invalid_structure);
     } else {
-        auto footer = parse_framing_value(next_token, cfg);
+        auto footer = parse_framing_value(next_section, cfg);
         if (!footer || *footer != header_byte)
             return std::unexpected(PuplangError::invalid_structure);
     }

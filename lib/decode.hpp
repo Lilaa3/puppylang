@@ -10,27 +10,6 @@
 #include "utf8.h"
 #include "utility.hpp"
 
-struct TokenParts {
-    std::string_view lead;
-    std::string_view body;
-    std::string_view trail;
-};
-
-// Slices punctuation boundaries from a token
-auto split_punctuation(std::string_view token) -> TokenParts;
-
-struct ParsedWord {
-    std::string_view lead_punct;
-    std::string_view sound;
-    std::string_view trail_punct;
-    int mode_change = 0;
-};
-
-// Deconstructs a formatted token into punctuation, mode prefix, and the core
-// sound
-auto parse_encoded_word(std::string_view token, const Settings &cfg)
-    -> ParsedWord;
-
 // Appends a UTF-8 codepoint to any string-like or stream-like output.
 // Works with std::string (push_back) and std::ostream (put).
 template <typename Out>

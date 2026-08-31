@@ -12,7 +12,7 @@
 #include <utility>
 
 bool is_punct(char c) {
-    return std::string_view(",!?:;'\".()[]{}").contains(c);
+    return std::string_view(",!?:;'\"-.()[]{}").contains(c);
 }
 
 int run_combinations(const std::vector<Run> &runs) noexcept {
