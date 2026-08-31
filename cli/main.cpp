@@ -132,6 +132,11 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
         .default_value(true)
         .implicit_value(true);
 
+    encode_command.add_argument("--punctuation-as-char")
+        .help("Treat punctuation exactly like a regular character.")
+        .default_value(false)
+        .implicit_value(true);
+
     encode_command.add_argument("--initial-howl-chance")
         .help("Initial howl probability 0-1 (default: 0.2)")
         .default_value(0.2)
@@ -201,6 +206,8 @@ std::optional<CliOptions> parse_cli(int argc, char *argv[]) {
             encode_command.get<double>("--initial-howl-chance");
         opts.enc_opts.howl_decay = encode_command.get<double>("--howl-decay");
         opts.enc_opts.min_howl = encode_command.get<double>("--min-howl");
+        opts.enc_opts.punctuation_as_char =
+            encode_command.get<bool>("--punctuation-as-char");
     } else if (program.is_subcommand_used("sounds")) {
         used = &sounds_command;
         opts.mode = Mode::GenSounds;

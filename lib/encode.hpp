@@ -34,6 +34,8 @@ struct EncodeOptions {
     double howl_decay = 0.5;
     double initial_howl_chance = 0.2;
     double min_howl = 0.1; // floor so long forms stay reachable
+
+    bool punctuation_as_char = false; // treat punctuation like any character
 };
 
 /// State maintained across streaming encode calls.

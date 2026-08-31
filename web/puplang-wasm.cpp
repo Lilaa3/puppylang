@@ -93,6 +93,10 @@ extern "C" void puplang_set_max_short_extension(int limit) {
     g_opts.max_short_extension = limit;
 }
 
+extern "C" void puplang_set_punct_as_char(bool enabled) {
+    g_opts.punctuation_as_char = enabled;
+}
+
 extern "C" const char *puplang_encode_file(const char *input_path,
                                            const char *output_path) {
     auto progress_callback = [](double v) { puplang_report_progress(v); };

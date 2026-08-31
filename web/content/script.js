@@ -18,7 +18,9 @@ const settingsConfig = {
     "min_howl": { fn: "puplang_set_min_howl", type: "number", defaultVal: 10, percentage: true },
     "length_decay_rate": { fn: "puplang_set_length_decay_rate", type: "number", defaultVal: 50, percentage: true },
     "uppercase_weight": { fn: "puplang_set_uppercase_weight", type: "number", defaultVal: 40, percentage: true },
-    "max_short_extension": { fn: "puplang_set_max_short_extension", type: "number", defaultVal: 2 }
+    "max_short_extension": { fn: "puplang_set_max_short_extension", type: "number", defaultVal: 2 },
+    "howl_enabled": { fn: "puplang_set_howl_enabled", type: "checkbox", defaultVal: true, callback: updateHowlOptionsVisibility },
+    "punctuation_as_char": { fn: "puplang_set_punct_as_char", type: "checkbox", defaultVal: false }
 };
 
 function renderStatusPanels() {
@@ -78,7 +80,7 @@ function hideProgress(type) {
 }
 
 function updateHowlOptionsVisibility() {
-    const checked = document.getElementById("howl-enabled").checked;
+    const checked = document.getElementById("howl_enabled").checked;
     document.querySelectorAll(".howl-option").forEach(el => {
         el.classList.toggle("hidden", !checked);
     });
@@ -214,22 +216,20 @@ function processText(op) {
 const encodeText = () => processText("encode");
 const decodeText = () => processText("decode");
 
-function updateHowlEnabled() {
-    const howlToggle = document.getElementById("howl-enabled");
-    forwardSetting("puplang_set_howl_enabled", "number", howlToggle.checked ? 1 : 0);
-    updateHowlOptionsVisibility();
-    encodeText();
-}
-
 function updateSettingAndReencode(e, encode = true) {
     const input = e.target;
     const config = settingsConfig[input.id];
     if (!config) return;
 
-    const rawVal = config.type === "bigint" ? BigInt(input.value) : Number(input.value);
-    const finalVal = config.percentage ? rawVal / 100 : rawVal;
+    const isCheckbox = config.type === "checkbox";
+    const rawVal = isCheckbox ? (input.checked ? 1 : 0)
+        : config.type === "bigint" ? BigInt(input.value)
+            : Number(input.value);
+    const finalVal = isCheckbox ? rawVal : config.percentage ? rawVal / 100 : rawVal;
 
     forwardSetting(config.fn, config.type, finalVal);
+
+    if (config.callback) config.callback();
 
     const valSpan = document.getElementById(`${input.id}-value`);
     if (valSpan) valSpan.textContent = `${rawVal}${config.percentage ? "%" : ""}`;
@@ -238,7 +238,11 @@ function updateSettingAndReencode(e, encode = true) {
 
 function resetToDefaults() {
     document.querySelectorAll("#settings-panel input").forEach(input => {
-        input.value = input.defaultValue;
+        if (input.type === "checkbox") {
+            input.checked = input.defaultChecked;
+        } else {
+            input.value = input.defaultValue;
+        }
     });
 }
 
@@ -246,7 +250,6 @@ function updateSettingsAndReencode() {
     document.querySelectorAll("#settings-panel input").forEach(input => {
         updateSettingAndReencode({ target: input }, false);
     });
-    updateHowlEnabled();
 }
 
 // --- Events ---
@@ -307,7 +310,6 @@ function bindEventListeners() {
     });
 
     document.getElementById("randomize-seed").addEventListener("click", randomizeSeed);
-    document.getElementById("howl-enabled").addEventListener("change", updateHowlEnabled);
     document.getElementById("reset-settings").addEventListener("click", handleReset);
 
     document.querySelectorAll("#settings-panel input").forEach(input => {
@@ -331,7 +333,6 @@ async function start() {
     createWorker();
     bindEventListeners();
     handleReset();
-    updateHowlOptionsVisibility();
 }
 
 start();

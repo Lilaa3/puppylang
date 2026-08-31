@@ -186,7 +186,10 @@ auto encode_chunk(
         state.current_mode = chunk.mode;
     }
 
-    out << chunk.lead_punct << *sound << chunk.trail_punct;
+    out << chunk.lead_punct;
+    if (!chunk.lead_punct.empty())
+        out << ' ';
+    out << *sound << chunk.trail_punct;
     state.any_chunk_emitted = true;
 
     return {};
@@ -285,8 +288,10 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
 
         tracker.report_fraction(std::streamoff(in.tellg()));
 
-        // Check if this codepoint is ASCII punctuation
-        if (cp <= 0x7F && is_punct(static_cast<char>(cp))) {
+        // Check if this codepoint is ASCII punctuation. Unless configured
+        // otherwise, punctuation passes through literally.
+        if (!opts.punctuation_as_char && cp <= 0x7F &&
+            is_punct(static_cast<char>(cp))) {
             if (sound_since_punct)
                 pending_trail.push_back(static_cast<char>(cp));
             else
