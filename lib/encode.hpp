@@ -21,6 +21,7 @@ struct SoundChunk {
     bool join = false;  // Suppress the leading separator space
     std::string lead_punct;
     std::string trail_punct;
+    bool sep_after_lead = false; // Separate lead punctuation from the sound
 };
 
 struct EncodeOptions {

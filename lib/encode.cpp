@@ -187,7 +187,7 @@ auto encode_chunk(
     }
 
     out << chunk.lead_punct;
-    if (!chunk.lead_punct.empty())
+    if (!chunk.lead_punct.empty() && chunk.sep_after_lead)
         out << ' ';
     out << *sound << chunk.trail_punct;
     state.any_chunk_emitted = true;
@@ -255,6 +255,7 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
         // Trailing punctuation belongs after the previous sound, so it is
         // flushed right before the following sound starts.
         bool had_trail = !pending_trail.empty();
+        bool had_lead = !pending_lead.empty();
         flush_punct();
         for (int b = 0; b < bytes; ++b) {
             int shift = BITS_PER_SOUND * (bytes - 1 - b);
@@ -264,7 +265,8 @@ auto encode_stream(std::istream &in, std::ostream &out, const Settings &cfg,
                 .is_first_byte = (b == 0),
                 .join = (b == 0) && had_trail && !is_ws(cp),
                 .lead_punct = (b == 0) ? std::move(pending_lead) : "",
-                .trail_punct = ""
+                .trail_punct = "",
+                .sep_after_lead = (b == 0) && had_lead && is_ws(cp)
             };
             if (b == 0)
                 pending_lead.clear();
